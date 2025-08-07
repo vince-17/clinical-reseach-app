@@ -32,6 +32,25 @@ function authMiddleware(req, res, next) {
   }
 }
 
+function requireRole(allowedRoles) {
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+    if (!allowedRoles.includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
+    next();
+  };
+}
+
+// Seed default admin (dev convenience)
+db.get('SELECT COUNT(*) as cnt FROM users', (e, row) => {
+  if (!e && row && row.cnt === 0) {
+    const email = 'admin@example.com';
+    const password_hash = bcrypt.hashSync('admin123', 10);
+    const createdAt = new Date().toISOString();
+    db.run('INSERT INTO users (email, password_hash, role, created_at) VALUES (?, ?, ?, ?)', [email, password_hash, 'manager', createdAt]);
+    console.log('Seeded default admin: admin@example.com / admin123');
+  }
+});
+
 // Auth routes
 app.post('/api/auth/register', (req, res) => {
   const { email, password, role = 'coordinator' } = req.body;
@@ -61,6 +80,10 @@ app.post('/api/auth/login', (req, res) => {
   });
 });
 
+app.get('/api/me', authMiddleware, (req, res) => {
+  res.json({ user: req.user });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'backend', timestamp: new Date().toISOString() });
 });
@@ -73,7 +96,7 @@ app.get('/api/patients', (req, res) => {
   });
 });
 
-app.post('/api/patients', authMiddleware, (req, res) => {
+app.post('/api/patients', authMiddleware, requireRole(['manager', 'coordinator']), (req, res) => {
   const { firstName, lastName, dob, baselineDate } = req.body;
   if (!firstName || !lastName) return res.status(400).json({ error: 'firstName and lastName are required' });
   const createdAt = new Date().toISOString();
@@ -88,7 +111,7 @@ app.post('/api/patients', authMiddleware, (req, res) => {
   });
 });
 
-app.delete('/api/patients/:id', authMiddleware, (req, res) => {
+app.delete('/api/patients/:id', authMiddleware, requireRole(['manager', 'coordinator']), (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
   db.run('DELETE FROM patients WHERE id = ?', [id], function (err) {
@@ -112,7 +135,7 @@ app.get('/api/appointments', (req, res) => {
   );
 });
 
-app.post('/api/appointments', authMiddleware, (req, res) => {
+app.post('/api/appointments', authMiddleware, requireRole(['manager', 'coordinator', 'pi']), (req, res) => {
   const { patientId, title, startAt, durationMinutes, resource, resourceId, visitTypeId } = req.body;
   if (!patientId || !title || !startAt || !durationMinutes) {
     return res.status(400).json({ error: 'patientId, title, startAt, durationMinutes are required' });
@@ -184,7 +207,7 @@ app.post('/api/appointments', authMiddleware, (req, res) => {
   }
 });
 
-app.delete('/api/appointments/:id', authMiddleware, (req, res) => {
+app.delete('/api/appointments/:id', authMiddleware, requireRole(['manager', 'coordinator', 'pi']), (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
   db.run('DELETE FROM appointments WHERE id = ?', [id], function (err) {
@@ -202,7 +225,7 @@ app.get('/api/visit-types', (req, res) => {
     res.json(rows);
   });
 });
-app.post('/api/visit-types', (req, res) => {
+app.post('/api/visit-types', authMiddleware, requireRole(['manager']), (req, res) => {
   const { name, offsetDays = 0, windowMinusDays = 0, windowPlusDays = 0, defaultDurationMinutes = 30 } = req.body;
   if (!name) return res.status(400).json({ error: 'name required' });
   const createdAt = new Date().toISOString();
@@ -226,7 +249,7 @@ app.get('/api/resources', (req, res) => {
     res.json(rows);
   });
 });
-app.post('/api/resources', (req, res) => {
+app.post('/api/resources', authMiddleware, requireRole(['manager']), (req, res) => {
   const { name, category } = req.body;
   if (!name) return res.status(400).json({ error: 'name required' });
   const createdAt = new Date().toISOString();
@@ -308,7 +331,7 @@ app.get('/api/inventory/items', (req, res) => {
   });
 });
 
-app.post('/api/inventory/items', authMiddleware, (req, res) => {
+app.post('/api/inventory/items', authMiddleware, requireRole(['manager', 'coordinator']), (req, res) => {
   const { name, category } = req.body;
   if (!name) return res.status(400).json({ error: 'name is required' });
   const createdAt = new Date().toISOString();
@@ -331,7 +354,7 @@ app.get('/api/inventory/items/:itemId/lots', (req, res) => {
   });
 });
 
-app.post('/api/inventory/items/:itemId/lots', authMiddleware, (req, res) => {
+app.post('/api/inventory/items/:itemId/lots', authMiddleware, requireRole(['manager', 'coordinator']), (req, res) => {
   const itemId = Number(req.params.itemId);
   const { lotCode, quantity, expiresOn } = req.body;
   if (!quantity || quantity <= 0) return res.status(400).json({ error: 'quantity must be > 0' });
@@ -351,7 +374,7 @@ app.post('/api/inventory/items/:itemId/lots', authMiddleware, (req, res) => {
 });
 
 // Inventory: dispensing
-app.post('/api/inventory/dispense', authMiddleware, (req, res) => {
+app.post('/api/inventory/dispense', authMiddleware, requireRole(['manager', 'coordinator']), (req, res) => {
   const { patientId, itemId, lotId, quantity } = req.body;
   if (!patientId || !itemId || !lotId || !quantity) {
     return res.status(400).json({ error: 'patientId, itemId, lotId, quantity are required' });

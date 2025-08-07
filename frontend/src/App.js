@@ -18,6 +18,7 @@ function App() {
   const [resources, setResources] = useState([]);
   const [newResource, setNewResource] = useState({ name: '', category: '' });
   const [auth, setAuth] = useState({ email: '', password: '', token: '' });
+  const [dashboard, setDashboard] = useState(null);
 
   useEffect(() => {
     fetch('/api/health')
@@ -48,6 +49,11 @@ function App() {
     fetch('/api/resources')
       .then((res) => res.json())
       .then(setResources)
+      .catch(() => {});
+
+    fetch('/api/dashboard')
+      .then((res) => res.json())
+      .then(setDashboard)
       .catch(() => {});
   }, []);
 
@@ -163,6 +169,14 @@ function App() {
       <header className="App-header">
         <h1>Clinical Research App</h1>
         <p>Frontend connected to backend.</p>
+        {dashboard && (
+          <div style={{ display: 'flex', gap: 16 }}>
+            <div>Patients: {dashboard.patients}</div>
+            <div>Upcoming appts: {dashboard.upcomingAppointments}</div>
+            <div>Low-stock lots: {dashboard.lowStockLots}</div>
+            <div>Expiring soon lots: {dashboard.expiringSoonLots}</div>
+          </div>
+        )}
         {health && (
           <pre style={{ textAlign: 'left' }}>{JSON.stringify(health, null, 2)}</pre>
         )}
@@ -335,6 +349,7 @@ function App() {
             <button type="submit" style={{ marginLeft: 8 }}>Login</button>
             {auth.token && <span style={{ marginLeft: 8, color: 'lightgreen' }}>Logged in</span>}
           </form>
+          {auth.token && <button onClick={() => setAuth({ email: '', password: '', token: '' })} style={{ marginTop: 8 }}>Logout</button>}
         </div>
         <form onSubmit={addItem} style={{ marginBottom: 12 }}>
           <input placeholder="Item name" value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} />
