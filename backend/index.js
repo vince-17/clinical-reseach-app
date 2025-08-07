@@ -74,11 +74,11 @@ app.get('/api/patients', (req, res) => {
 });
 
 app.post('/api/patients', authMiddleware, (req, res) => {
-  const { firstName, lastName, dob } = req.body;
+  const { firstName, lastName, dob, baselineDate } = req.body;
   if (!firstName || !lastName) return res.status(400).json({ error: 'firstName and lastName are required' });
   const createdAt = new Date().toISOString();
-  const stmt = db.prepare('INSERT INTO patients (first_name, last_name, dob, created_at) VALUES (?, ?, ?, ?)');
-  stmt.run(firstName, lastName, dob || null, createdAt, function (err) {
+  const stmt = db.prepare('INSERT INTO patients (first_name, last_name, dob, baseline_date, created_at) VALUES (?, ?, ?, ?, ?)');
+  stmt.run(firstName, lastName, dob || null, baselineDate || null, createdAt, function (err) {
     if (err) return res.status(500).json({ error: err.message });
     db.get('SELECT * FROM patients WHERE id = ?', [this.lastID], (e, row) => {
       if (e) return res.status(500).json({ error: e.message });
@@ -113,16 +113,42 @@ app.get('/api/appointments', (req, res) => {
 });
 
 app.post('/api/appointments', authMiddleware, (req, res) => {
-  const { patientId, title, startAt, durationMinutes, resource } = req.body;
+  const { patientId, title, startAt, durationMinutes, resource, resourceId, visitTypeId } = req.body;
   if (!patientId || !title || !startAt || !durationMinutes) {
     return res.status(400).json({ error: 'patientId, title, startAt, durationMinutes are required' });
   }
+  // If visitTypeId provided, validate visit window relative to baseline_date
+  if (visitTypeId) {
+    db.get('SELECT baseline_date FROM patients WHERE id = ?', [patientId], (e1, p) => {
+      if (e1) return res.status(500).json({ error: e1.message });
+      if (!p || !p.baseline_date) return continueOverlapCheck();
+      db.get('SELECT * FROM visit_types WHERE id = ?', [visitTypeId], (e2, vt) => {
+        if (e2) return res.status(500).json({ error: e2.message });
+        if (!vt) return res.status(400).json({ error: 'invalid visitTypeId' });
+        const target = new Date(p.baseline_date);
+        target.setDate(target.getDate() + (vt.offset_days || 0));
+        const min = new Date(target);
+        min.setDate(min.getDate() - (vt.window_minus_days || 0));
+        const max = new Date(target);
+        max.setDate(max.getDate() + (vt.window_plus_days || 0));
+        const start = new Date(startAt);
+        if (isFinite(min) && isFinite(max) && (start < min || start > max)) {
+          return res.status(400).json({ error: 'Visit outside allowed window' });
+        }
+        return continueOverlapCheck(vt);
+      });
+    });
+  } else {
+    continueOverlapCheck();
+  }
+
+  function continueOverlapCheck(vt) {
   // Prevent overlapping for the same patient and same resource (if provided)
   const endAtExpr = `datetime(?, '+' || ? || ' minutes')`;
   const overlapQuery = `
     SELECT 1 FROM appointments
     WHERE (
-      patient_id = ? OR (resource IS NOT NULL AND resource = ?)
+      patient_id = ? OR (resource IS NOT NULL AND resource = ?) OR (resource_id IS NOT NULL AND resource_id = ?)
     ) AND (
       start_at < ${endAtExpr} AND ${endAtExpr} > start_at
     )
@@ -130,17 +156,18 @@ app.post('/api/appointments', authMiddleware, (req, res) => {
   `;
   db.get(
     overlapQuery,
-    [patientId, resource || '', startAt, durationMinutes, startAt, durationMinutes],
+    [patientId, resource || '', resourceId || -1, startAt, durationMinutes, startAt, durationMinutes],
     (err, row) => {
       if (err) return res.status(500).json({ error: err.message });
       if (row) return res.status(409).json({ error: 'Overlapping appointment detected' });
 
       const createdAt = new Date().toISOString();
       const stmt = db.prepare(
-        `INSERT INTO appointments (patient_id, title, start_at, duration_minutes, resource, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)`
+        `INSERT INTO appointments (patient_id, title, start_at, duration_minutes, resource, resource_id, visit_type_id, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       );
-      stmt.run(patientId, title, startAt, durationMinutes, resource || null, createdAt, function (e) {
+      const dur = durationMinutes || (vt?.default_duration_minutes || 30);
+      stmt.run(patientId, title, startAt, dur, resource || null, resourceId || null, visitTypeId || null, createdAt, function (e) {
         if (e) return res.status(500).json({ error: e.message });
         db.get(
           `SELECT a.*, p.first_name, p.last_name FROM appointments a JOIN patients p ON p.id = a.patient_id WHERE a.id = ?`,
@@ -154,6 +181,7 @@ app.post('/api/appointments', authMiddleware, (req, res) => {
       });
     }
   );
+  }
 });
 
 app.delete('/api/appointments/:id', authMiddleware, (req, res) => {
@@ -242,6 +270,34 @@ app.get('/api/inventory/report.csv', (req, res) => {
       res.send(header + csv + (csv ? '\n' : ''));
     }
   );
+});
+
+// Audit logs endpoint (read-only)
+app.get('/api/audit-logs', (req, res) => {
+  db.all('SELECT * FROM audit_logs ORDER BY id DESC LIMIT 200', (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// Dashboard KPIs
+app.get('/api/dashboard', (req, res) => {
+  db.serialize(() => {
+    const out = {};
+    db.get('SELECT COUNT(*) as patients FROM patients', (e1, r1) => {
+      out.patients = r1?.patients || 0;
+      db.get("SELECT COUNT(*) as upcoming FROM appointments WHERE datetime(start_at) >= datetime('now')", (e2, r2) => {
+        out.upcomingAppointments = r2?.upcoming || 0;
+        db.get("SELECT COUNT(*) as lowstock FROM inventory_lots WHERE quantity <= 5", (e3, r3) => {
+          out.lowStockLots = r3?.lowstock || 0;
+          db.get("SELECT COUNT(*) as expSoon FROM inventory_lots WHERE expires_on IS NOT NULL AND DATE(expires_on) <= DATE('now', '+14 day')", (e4, r4) => {
+            out.expiringSoonLots = r4?.expSoon || 0;
+            res.json(out);
+          });
+        });
+      });
+    });
+  });
 });
 
 // Inventory: items

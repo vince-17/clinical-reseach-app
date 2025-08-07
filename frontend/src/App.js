@@ -5,9 +5,9 @@ function App() {
   const [health, setHealth] = useState(null);
   const [error, setError] = useState(null);
   const [patients, setPatients] = useState([]);
-  const [form, setForm] = useState({ firstName: '', lastName: '', dob: '' });
+  const [form, setForm] = useState({ firstName: '', lastName: '', dob: '', baselineDate: '' });
   const [appointments, setAppointments] = useState([]);
-  const [apptForm, setApptForm] = useState({ patientId: '', title: '', startAt: '', durationMinutes: 30, resource: '' });
+  const [apptForm, setApptForm] = useState({ patientId: '', title: '', startAt: '', durationMinutes: 30, resource: '', resourceId: '', visitTypeId: '' });
   const [items, setItems] = useState([]);
   const [newItem, setNewItem] = useState({ name: '', category: '' });
   const [lots, setLots] = useState([]);
@@ -77,7 +77,7 @@ function App() {
   const addAppointment = async (e) => {
     e.preventDefault();
     try {
-      const body = { ...apptForm, patientId: Number(apptForm.patientId), durationMinutes: Number(apptForm.durationMinutes) };
+      const body = { ...apptForm, patientId: Number(apptForm.patientId), durationMinutes: Number(apptForm.durationMinutes), resourceId: apptForm.resourceId ? Number(apptForm.resourceId) : undefined, visitTypeId: apptForm.visitTypeId ? Number(apptForm.visitTypeId) : undefined };
       const res = await fetch('/api/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: auth.token ? `Bearer ${auth.token}` : '' },
@@ -89,7 +89,7 @@ function App() {
       }
       const created = await res.json();
       setAppointments((prev) => [created, ...prev]);
-      setApptForm({ patientId: '', title: '', startAt: '', durationMinutes: 30, resource: '' });
+      setApptForm({ patientId: '', title: '', startAt: '', durationMinutes: 30, resource: '', resourceId: '', visitTypeId: '' });
     } catch (e) {
       setError(e.message);
     }
@@ -187,6 +187,13 @@ function App() {
             onChange={(e) => setForm({ ...form, dob: e.target.value })}
             style={{ marginLeft: 8 }}
           />
+          <input
+            type="date"
+            placeholder="Baseline date"
+            value={form.baselineDate}
+            onChange={(e) => setForm({ ...form, baselineDate: e.target.value })}
+            style={{ marginLeft: 8 }}
+          />
           <button type="submit" style={{ marginLeft: 8 }}>
             Add
           </button>
@@ -221,6 +228,12 @@ function App() {
             onChange={(e) => setApptForm({ ...apptForm, title: e.target.value })}
             style={{ marginLeft: 8 }}
           />
+          <select value={apptForm.visitTypeId} onChange={(e) => setApptForm({ ...apptForm, visitTypeId: e.target.value })} style={{ marginLeft: 8 }}>
+            <option value="">Visit type</option>
+            {visitTypes.map((vt) => (
+              <option key={vt.id} value={vt.id}>{vt.name}</option>
+            ))}
+          </select>
           <input
             type="datetime-local"
             value={apptForm.startAt}
@@ -235,6 +248,12 @@ function App() {
             onChange={(e) => setApptForm({ ...apptForm, durationMinutes: e.target.value })}
             style={{ marginLeft: 8, width: 80 }}
           />
+          <select value={apptForm.resourceId} onChange={(e) => setApptForm({ ...apptForm, resourceId: e.target.value })} style={{ marginLeft: 8 }}>
+            <option value="">Select resource</option>
+            {resources.map((r) => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
+          </select>
           <input
             placeholder="Resource (e.g., Room 1)"
             value={apptForm.resource}
@@ -301,6 +320,10 @@ function App() {
 
         <div style={{ marginTop: 16 }}>
           <a href="/api/inventory/report.csv" target="_blank" rel="noreferrer">Download Inventory CSV</a>
+        </div>
+        <div style={{ marginTop: 16, textAlign: 'left', width: 720 }}>
+          <strong>Audit Logs (latest 200)</strong>
+          <button onClick={async () => { const res = await fetch('/api/audit-logs'); if (res.ok) { const data = await res.json(); alert(JSON.stringify(data.slice(0, 10), null, 2)); } }} style={{ marginLeft: 8 }}>Preview</button>
         </div>
 
         <h2>Inventory</h2>

@@ -17,6 +17,7 @@ db.serialize(() => {
       first_name TEXT NOT NULL,
       last_name TEXT NOT NULL,
       dob TEXT,
+      baseline_date TEXT,
       created_at TEXT NOT NULL
     )
   `);
@@ -29,6 +30,8 @@ db.serialize(() => {
       start_at TEXT NOT NULL,
       duration_minutes INTEGER NOT NULL,
       resource TEXT,
+      resource_id INTEGER,
+      visit_type_id INTEGER,
       created_at TEXT NOT NULL,
       FOREIGN KEY(patient_id) REFERENCES patients(id)
     )
