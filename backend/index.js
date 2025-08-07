@@ -110,6 +110,83 @@ app.delete('/api/appointments/:id', (req, res) => {
   });
 });
 
+// Visit types
+app.get('/api/visit-types', (req, res) => {
+  db.all('SELECT * FROM visit_types ORDER BY id DESC', (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+app.post('/api/visit-types', (req, res) => {
+  const { name, offsetDays = 0, windowMinusDays = 0, windowPlusDays = 0, defaultDurationMinutes = 30 } = req.body;
+  if (!name) return res.status(400).json({ error: 'name required' });
+  const createdAt = new Date().toISOString();
+  db.run(
+    `INSERT INTO visit_types (name, offset_days, window_minus_days, window_plus_days, default_duration_minutes, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+    [name, offsetDays, windowMinusDays, windowPlusDays, defaultDurationMinutes, createdAt],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      db.get('SELECT * FROM visit_types WHERE id = ?', [this.lastID], (e, row) => {
+        if (e) return res.status(500).json({ error: e.message });
+        res.status(201).json(row);
+      });
+    }
+  );
+});
+
+// Resources
+app.get('/api/resources', (req, res) => {
+  db.all('SELECT * FROM resources ORDER BY id DESC', (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+app.post('/api/resources', (req, res) => {
+  const { name, category } = req.body;
+  if (!name) return res.status(400).json({ error: 'name required' });
+  const createdAt = new Date().toISOString();
+  db.run('INSERT INTO resources (name, category, created_at) VALUES (?, ?, ?)', [name, category || null, createdAt], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    db.get('SELECT * FROM resources WHERE id = ?', [this.lastID], (e, row) => {
+      if (e) return res.status(500).json({ error: e.message });
+      res.status(201).json(row);
+    });
+  });
+});
+
+// Inventory alerts and CSV export
+app.get('/api/inventory/alerts', (req, res) => {
+  // Soon-to-expire (<=14 days) or low stock (<=5) lots
+  db.all(
+    `SELECT il.*, ii.name AS item_name
+     FROM inventory_lots il JOIN inventory_items ii ON ii.id = il.item_id
+     WHERE (il.expires_on IS NOT NULL AND DATE(il.expires_on) <= DATE('now', '+14 day'))
+        OR il.quantity <= 5
+     ORDER BY COALESCE(il.expires_on, '9999-12-31') ASC, il.quantity ASC`,
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(rows);
+    }
+  );
+});
+
+app.get('/api/inventory/report.csv', (req, res) => {
+  db.all(
+    `SELECT ii.name, ii.category, il.lot_code, il.quantity, il.expires_on
+     FROM inventory_items ii LEFT JOIN inventory_lots il ON il.item_id = ii.id
+     ORDER BY ii.name ASC, il.expires_on ASC`,
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      const header = 'Item,Category,Lot,Quantity,Expires\n';
+      const csv = rows
+        .map((r) => [r.name, r.category || '', r.lot_code || '', r.quantity ?? '', r.expires_on || ''].map((v) => String(v).replace(/"/g, '""')).map((v) => (v.includes(',') ? `"${v}"` : v)).join(','))
+        .join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.send(header + csv + (csv ? '\n' : ''));
+    }
+  );
+});
+
 // Inventory: items
 app.get('/api/inventory/items', (req, res) => {
   db.all('SELECT * FROM inventory_items ORDER BY id DESC', (err, rows) => {

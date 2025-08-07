@@ -13,6 +13,10 @@ function App() {
   const [lots, setLots] = useState([]);
   const [newLot, setNewLot] = useState({ itemId: '', lotCode: '', quantity: 1, expiresOn: '' });
   const [dispense, setDispense] = useState({ patientId: '', itemId: '', lotId: '', quantity: 1 });
+  const [visitTypes, setVisitTypes] = useState([]);
+  const [newVisitType, setNewVisitType] = useState({ name: '', offsetDays: 0, windowMinusDays: 0, windowPlusDays: 0, defaultDurationMinutes: 30 });
+  const [resources, setResources] = useState([]);
+  const [newResource, setNewResource] = useState({ name: '', category: '' });
 
   useEffect(() => {
     fetch('/api/health')
@@ -33,6 +37,16 @@ function App() {
     fetch('/api/inventory/items')
       .then((res) => res.json())
       .then(setItems)
+      .catch(() => {});
+
+    fetch('/api/visit-types')
+      .then((res) => res.json())
+      .then(setVisitTypes)
+      .catch(() => {});
+
+    fetch('/api/resources')
+      .then((res) => res.json())
+      .then(setResources)
       .catch(() => {});
   }, []);
 
@@ -240,6 +254,53 @@ function App() {
             </li>
           ))}
         </ul>
+
+        <h3>Visit Types</h3>
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          const res = await fetch('/api/visit-types', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newVisitType) });
+          if (res.ok) {
+            const vt = await res.json();
+            setVisitTypes((p) => [vt, ...p]);
+            setNewVisitType({ name: '', offsetDays: 0, windowMinusDays: 0, windowPlusDays: 0, defaultDurationMinutes: 30 });
+          }
+        }}>
+          <input placeholder="Name" value={newVisitType.name} onChange={(e) => setNewVisitType({ ...newVisitType, name: e.target.value })} />
+          <input type="number" style={{ marginLeft: 8, width: 90 }} placeholder="Offset" value={newVisitType.offsetDays} onChange={(e) => setNewVisitType({ ...newVisitType, offsetDays: Number(e.target.value) })} />
+          <input type="number" style={{ marginLeft: 8, width: 90 }} placeholder="Win -" value={newVisitType.windowMinusDays} onChange={(e) => setNewVisitType({ ...newVisitType, windowMinusDays: Number(e.target.value) })} />
+          <input type="number" style={{ marginLeft: 8, width: 90 }} placeholder="Win +" value={newVisitType.windowPlusDays} onChange={(e) => setNewVisitType({ ...newVisitType, windowPlusDays: Number(e.target.value) })} />
+          <input type="number" style={{ marginLeft: 8, width: 120 }} placeholder="Duration" value={newVisitType.defaultDurationMinutes} onChange={(e) => setNewVisitType({ ...newVisitType, defaultDurationMinutes: Number(e.target.value) })} />
+          <button type="submit" style={{ marginLeft: 8 }}>Add</button>
+        </form>
+        <ul style={{ textAlign: 'left' }}>
+          {visitTypes.map((vt) => (
+            <li key={vt.id}>{vt.name} — offset {vt.offset_days}d, window [-{vt.window_minus_days}, +{vt.window_plus_days}], default {vt.default_duration_minutes}m</li>
+          ))}
+        </ul>
+
+        <h3>Resources</h3>
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          const res = await fetch('/api/resources', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newResource) });
+          if (res.ok) {
+            const r = await res.json();
+            setResources((p) => [r, ...p]);
+            setNewResource({ name: '', category: '' });
+          }
+        }}>
+          <input placeholder="Resource name" value={newResource.name} onChange={(e) => setNewResource({ ...newResource, name: e.target.value })} />
+          <input placeholder="Category" value={newResource.category} onChange={(e) => setNewResource({ ...newResource, category: e.target.value })} style={{ marginLeft: 8 }} />
+          <button type="submit" style={{ marginLeft: 8 }}>Add</button>
+        </form>
+        <ul style={{ textAlign: 'left' }}>
+          {resources.map((r) => (
+            <li key={r.id}>{r.name} {r.category ? `(${r.category})` : ''}</li>
+          ))}
+        </ul>
+
+        <div style={{ marginTop: 16 }}>
+          <a href="/api/inventory/report.csv" target="_blank" rel="noreferrer">Download Inventory CSV</a>
+        </div>
 
         <h2>Inventory</h2>
         <form onSubmit={addItem} style={{ marginBottom: 12 }}>

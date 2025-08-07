@@ -36,6 +36,29 @@ db.serialize(() => {
   db.run(`CREATE INDEX IF NOT EXISTS idx_appointments_patient ON appointments(patient_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_appointments_start ON appointments(start_at)`);
 
+  // Visit types (protocol-like templates)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS visit_types (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      offset_days INTEGER DEFAULT 0,
+      window_minus_days INTEGER DEFAULT 0,
+      window_plus_days INTEGER DEFAULT 0,
+      default_duration_minutes INTEGER DEFAULT 30,
+      created_at TEXT NOT NULL
+    )
+  `);
+
+  // Resources (rooms, devices, staff placeholders)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS resources (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      category TEXT,
+      created_at TEXT NOT NULL
+    )
+  `);
+
   // Inventory tables
   db.run(`
     CREATE TABLE IF NOT EXISTS inventory_items (
