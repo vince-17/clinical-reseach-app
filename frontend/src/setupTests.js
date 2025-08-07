@@ -3,3 +3,5 @@
 // expect(element).toHaveTextContent(/react/i)
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
+// Basic smoke test helper
+export const wait = (ms) => new Promise((r) => setTimeout(r, ms));

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import PatientsList from './components/PatientsList.jsx';
 import './App.css';
 
 function App() {
@@ -19,6 +20,15 @@ function App() {
   const [newResource, setNewResource] = useState({ name: '', category: '' });
   const [auth, setAuth] = useState({ email: '', password: '', token: '' });
   const [dashboard, setDashboard] = useState(null);
+  const [patientQuery, setPatientQuery] = useState('');
+  const [apptQuery, setApptQuery] = useState('');
+  const [itemQuery, setItemQuery] = useState('');
+
+  // Load token from localStorage
+  useEffect(() => {
+    const t = localStorage.getItem('auth_token');
+    if (t) setAuth((p) => ({ ...p, token: t }));
+  }, []);
 
   useEffect(() => {
     fetch('/api/health')
@@ -69,9 +79,24 @@ function App() {
       if (!res.ok) throw new Error('Failed to add');
       const created = await res.json();
       setPatients((prev) => [created, ...prev]);
-      setForm({ firstName: '', lastName: '', dob: '' });
+      setForm({ firstName: '', lastName: '', dob: '', baselineDate: '' });
     } catch (e) {
       setError(e.message);
+    }
+  };
+
+  const updatePatient = async (id, partial) => {
+    const res = await fetch(`/api/patients/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: auth.token ? `Bearer ${auth.token}` : '' },
+      body: JSON.stringify(partial),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setPatients((prev) => prev.map((p) => (p.id === id ? updated : p)));
+    } else {
+      const err = await res.json().catch(() => ({}));
+      setError(err.error || 'Update failed');
     }
   };
 
@@ -165,8 +190,12 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <header className="App-header">
+    <div>
+      <div className="navbar">
+        <div className="brand">Clinical Research</div>
+        <div className="status">{health ? 'Online' : 'Connecting...'}</div>
+      </div>
+      <div className="container">
         <h1>Clinical Research App</h1>
         <p>Frontend connected to backend.</p>
         {dashboard && (
@@ -212,18 +241,22 @@ function App() {
             Add
           </button>
         </form>
-        <ul style={{ width: 480, textAlign: 'left' }}>
-          {patients.map((p) => (
-            <li key={p.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span>
-                {p.first_name} {p.last_name} {p.dob ? `(${p.dob})` : ''}
-              </span>
-              <button onClick={() => deletePatient(p.id)}>Delete</button>
-            </li>
-          ))}
-        </ul>
+        <PatientsList
+          patients={patients}
+          query={patientQuery}
+          onQueryChange={setPatientQuery}
+          onEdit={(p) => {
+            const firstName = window.prompt('First name', p.first_name) ?? p.first_name;
+            const lastName = window.prompt('Last name', p.last_name) ?? p.last_name;
+            updatePatient(p.id, { firstName, lastName });
+          }}
+          onDelete={deletePatient}
+        />
 
         <h2>Appointments</h2>
+        <div style={{ margin: '8px 0' }}>
+          <input placeholder="Search appointments" value={apptQuery} onChange={(e)=>setApptQuery(e.target.value)} />
+        </div>
         <form onSubmit={addAppointment} style={{ marginBottom: 16 }}>
           <select
             value={apptForm.patientId}
@@ -279,7 +312,7 @@ function App() {
           </button>
         </form>
         <ul style={{ width: 720, textAlign: 'left' }}>
-          {appointments.map((a) => (
+          {appointments.filter((a)=>`${a.title} ${a.first_name} ${a.last_name}`.toLowerCase().includes(apptQuery.toLowerCase())).map((a) => (
             <li key={a.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
               <span>
                 {a.title} — {a.first_name} {a.last_name} — {new Date(a.start_at).toLocaleString()} — {a.duration_minutes}m {a.resource ? `— ${a.resource}` : ''}
@@ -343,7 +376,7 @@ function App() {
         <h2>Inventory</h2>
         <div style={{ marginBottom: 12 }}>
           <strong>Auth</strong>
-          <form onSubmit={async (e) => { e.preventDefault(); const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: auth.email, password: auth.password }) }); if (res.ok) { const data = await res.json(); setAuth((p) => ({ ...p, token: data.token })); } }}>
+          <form onSubmit={async (e) => { e.preventDefault(); const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: auth.email, password: auth.password }) }); if (res.ok) { const data = await res.json(); setAuth((p) => ({ ...p, token: data.token })); localStorage.setItem('auth_token', data.token); } }}>
             <input placeholder="email" value={auth.email} onChange={(e) => setAuth({ ...auth, email: e.target.value })} />
             <input placeholder="password" type="password" value={auth.password} onChange={(e) => setAuth({ ...auth, password: e.target.value })} style={{ marginLeft: 8 }} />
             <button type="submit" style={{ marginLeft: 8 }}>Login</button>
@@ -359,8 +392,9 @@ function App() {
         <div style={{ display: 'flex', gap: 24 }}>
           <div style={{ width: 300, textAlign: 'left' }}>
             <strong>Items</strong>
+            <input placeholder="Search items" value={itemQuery} onChange={(e)=>setItemQuery(e.target.value)} style={{ width:'100%', margin:'8px 0' }} />
             <ul>
-              {items.map((it) => (
+              {items.filter((it)=>it.name.toLowerCase().includes(itemQuery.toLowerCase())).map((it) => (
                 <li key={it.id}>
                   <button onClick={() => loadLots(it.id)} style={{ marginRight: 8 }}>View Lots</button>
                   {it.name} {it.category ? `(${it.category})` : ''}
@@ -415,7 +449,7 @@ function App() {
           <input type="number" min="1" value={dispense.quantity} onChange={(e) => setDispense({ ...dispense, quantity: e.target.value })} style={{ marginLeft: 8, width: 80 }} />
           <button type="submit" style={{ marginLeft: 8 }}>Dispense</button>
         </form>
-      </header>
+      </div>
     </div>
   );
 }

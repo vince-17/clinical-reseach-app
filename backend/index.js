@@ -122,6 +122,25 @@ app.delete('/api/patients/:id', authMiddleware, requireRole(['manager', 'coordin
   });
 });
 
+app.put('/api/patients/:id', authMiddleware, requireRole(['manager', 'coordinator']), (req, res) => {
+  const id = Number(req.params.id);
+  const { firstName, lastName, dob, baselineDate } = req.body;
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
+  db.run(
+    'UPDATE patients SET first_name = COALESCE(?, first_name), last_name = COALESCE(?, last_name), dob = COALESCE(?, dob), baseline_date = COALESCE(?, baseline_date) WHERE id = ?',
+    [firstName || null, lastName || null, dob || null, baselineDate || null, id],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      if (this.changes === 0) return res.status(404).json({ error: 'Not found' });
+      db.get('SELECT * FROM patients WHERE id = ?', [id], (e, row) => {
+        if (e) return res.status(500).json({ error: e.message });
+        createAuditLog(req.user?.email, 'update', 'patient', id, row);
+        res.json(row);
+      });
+    }
+  );
+});
+
 // Appointments: basic MVP with visit-window-like constraint and double-book prevention by patient and resource
 app.get('/api/appointments', (req, res) => {
   db.all(
@@ -216,6 +235,25 @@ app.delete('/api/appointments/:id', authMiddleware, requireRole(['manager', 'coo
     createAuditLog(req.user?.email, 'delete', 'appointment', id, {});
     res.status(204).send();
   });
+});
+
+app.put('/api/appointments/:id', authMiddleware, requireRole(['manager', 'coordinator', 'pi']), (req, res) => {
+  const id = Number(req.params.id);
+  const { title, startAt, durationMinutes, resource, resourceId, visitTypeId } = req.body;
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
+  db.run(
+    'UPDATE appointments SET title = COALESCE(?, title), start_at = COALESCE(?, start_at), duration_minutes = COALESCE(?, duration_minutes), resource = COALESCE(?, resource), resource_id = COALESCE(?, resource_id), visit_type_id = COALESCE(?, visit_type_id) WHERE id = ?',
+    [title || null, startAt || null, durationMinutes || null, resource || null, resourceId || null, visitTypeId || null, id],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      if (this.changes === 0) return res.status(404).json({ error: 'Not found' });
+      db.get(`SELECT a.*, p.first_name, p.last_name FROM appointments a JOIN patients p ON p.id = a.patient_id WHERE a.id = ?`, [id], (e, row) => {
+        if (e) return res.status(500).json({ error: e.message });
+        createAuditLog(req.user?.email, 'update', 'appointment', id, row);
+        res.json(row);
+      });
+    }
+  );
 });
 
 // Visit types
@@ -371,6 +409,36 @@ app.post('/api/inventory/items/:itemId/lots', authMiddleware, requireRole(['mana
       });
     }
   );
+});
+
+app.put('/api/inventory/items/:id', authMiddleware, requireRole(['manager', 'coordinator']), (req, res) => {
+  const id = Number(req.params.id);
+  const { name, category } = req.body;
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
+  db.run('UPDATE inventory_items SET name = COALESCE(?, name), category = COALESCE(?, category) WHERE id = ?', [name || null, category || null, id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'Not found' });
+    db.get('SELECT * FROM inventory_items WHERE id = ?', [id], (e, row) => {
+      if (e) return res.status(500).json({ error: e.message });
+      createAuditLog(req.user?.email, 'update', 'inventory_item', id, row);
+      res.json(row);
+    });
+  });
+});
+
+app.put('/api/inventory/lots/:id', authMiddleware, requireRole(['manager', 'coordinator']), (req, res) => {
+  const id = Number(req.params.id);
+  const { lotCode, quantity, expiresOn } = req.body;
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
+  db.run('UPDATE inventory_lots SET lot_code = COALESCE(?, lot_code), quantity = COALESCE(?, quantity), expires_on = COALESCE(?, expires_on) WHERE id = ?', [lotCode || null, quantity ?? null, expiresOn || null, id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'Not found' });
+    db.get('SELECT * FROM inventory_lots WHERE id = ?', [id], (e, row) => {
+      if (e) return res.status(500).json({ error: e.message });
+      createAuditLog(req.user?.email, 'update', 'inventory_lot', id, row);
+      res.json(row);
+    });
+  });
 });
 
 // Inventory: dispensing
