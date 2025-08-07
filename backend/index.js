@@ -110,6 +110,80 @@ app.delete('/api/appointments/:id', (req, res) => {
   });
 });
 
+// Inventory: items
+app.get('/api/inventory/items', (req, res) => {
+  db.all('SELECT * FROM inventory_items ORDER BY id DESC', (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.post('/api/inventory/items', (req, res) => {
+  const { name, category } = req.body;
+  if (!name) return res.status(400).json({ error: 'name is required' });
+  const createdAt = new Date().toISOString();
+  db.run('INSERT INTO inventory_items (name, category, created_at) VALUES (?, ?, ?)', [name, category || null, createdAt], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    db.get('SELECT * FROM inventory_items WHERE id = ?', [this.lastID], (e, row) => {
+      if (e) return res.status(500).json({ error: e.message });
+      res.status(201).json(row);
+    });
+  });
+});
+
+// Inventory: lots
+app.get('/api/inventory/items/:itemId/lots', (req, res) => {
+  const itemId = Number(req.params.itemId);
+  db.all('SELECT * FROM inventory_lots WHERE item_id = ? ORDER BY expires_on ASC NULLS LAST, id DESC', [itemId], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.post('/api/inventory/items/:itemId/lots', (req, res) => {
+  const itemId = Number(req.params.itemId);
+  const { lotCode, quantity, expiresOn } = req.body;
+  if (!quantity || quantity <= 0) return res.status(400).json({ error: 'quantity must be > 0' });
+  const createdAt = new Date().toISOString();
+  db.run(
+    'INSERT INTO inventory_lots (item_id, lot_code, quantity, expires_on, created_at) VALUES (?, ?, ?, ?, ?)',
+    [itemId, lotCode || null, quantity, expiresOn || null, createdAt],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      db.get('SELECT * FROM inventory_lots WHERE id = ?', [this.lastID], (e, row) => {
+        if (e) return res.status(500).json({ error: e.message });
+        res.status(201).json(row);
+      });
+    }
+  );
+});
+
+// Inventory: dispensing
+app.post('/api/inventory/dispense', (req, res) => {
+  const { patientId, itemId, lotId, quantity } = req.body;
+  if (!patientId || !itemId || !lotId || !quantity) {
+    return res.status(400).json({ error: 'patientId, itemId, lotId, quantity are required' });
+  }
+  const createdAt = new Date().toISOString();
+  db.get('SELECT quantity FROM inventory_lots WHERE id = ?', [lotId], (err, lot) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!lot) return res.status(404).json({ error: 'lot not found' });
+    if (lot.quantity < quantity) return res.status(400).json({ error: 'insufficient quantity' });
+
+    db.run('UPDATE inventory_lots SET quantity = quantity - ? WHERE id = ?', [quantity, lotId], function (uErr) {
+      if (uErr) return res.status(500).json({ error: uErr.message });
+      db.run(
+        'INSERT INTO inventory_dispenses (patient_id, item_id, lot_id, quantity, created_at) VALUES (?, ?, ?, ?, ?)',
+        [patientId, itemId, lotId, quantity, createdAt],
+        function (iErr) {
+          if (iErr) return res.status(500).json({ error: iErr.message });
+          res.status(201).json({ id: this.lastID, patientId, itemId, lotId, quantity, created_at: createdAt });
+        }
+      );
+    });
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Backend listening on http://localhost:${PORT}`);
 });
