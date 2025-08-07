@@ -17,6 +17,7 @@ function App() {
   const [newVisitType, setNewVisitType] = useState({ name: '', offsetDays: 0, windowMinusDays: 0, windowPlusDays: 0, defaultDurationMinutes: 30 });
   const [resources, setResources] = useState([]);
   const [newResource, setNewResource] = useState({ name: '', category: '' });
+  const [auth, setAuth] = useState({ email: '', password: '', token: '' });
 
   useEffect(() => {
     fetch('/api/health')
@@ -56,7 +57,7 @@ function App() {
     try {
       const res = await fetch('/api/patients', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: auth.token ? `Bearer ${auth.token}` : '' },
         body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error('Failed to add');
@@ -69,7 +70,7 @@ function App() {
   };
 
   const deletePatient = async (id) => {
-    await fetch(`/api/patients/${id}`, { method: 'DELETE' });
+    await fetch(`/api/patients/${id}`, { method: 'DELETE', headers: { Authorization: auth.token ? `Bearer ${auth.token}` : '' } });
     setPatients((prev) => prev.filter((p) => p.id !== id));
   };
 
@@ -79,7 +80,7 @@ function App() {
       const body = { ...apptForm, patientId: Number(apptForm.patientId), durationMinutes: Number(apptForm.durationMinutes) };
       const res = await fetch('/api/appointments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: auth.token ? `Bearer ${auth.token}` : '' },
         body: JSON.stringify(body),
       });
       if (!res.ok) {
@@ -95,7 +96,7 @@ function App() {
   };
 
   const deleteAppointment = async (id) => {
-    await fetch(`/api/appointments/${id}`, { method: 'DELETE' });
+    await fetch(`/api/appointments/${id}`, { method: 'DELETE', headers: { Authorization: auth.token ? `Bearer ${auth.token}` : '' } });
     setAppointments((prev) => prev.filter((a) => a.id !== id));
   };
 
@@ -103,7 +104,7 @@ function App() {
     e.preventDefault();
     const res = await fetch('/api/inventory/items', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: auth.token ? `Bearer ${auth.token}` : '' },
       body: JSON.stringify(newItem),
     });
     if (res.ok) {
@@ -128,7 +129,7 @@ function App() {
     if (!itemId) return;
     const res = await fetch(`/api/inventory/items/${itemId}/lots`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: auth.token ? `Bearer ${auth.token}` : '' },
       body: JSON.stringify({ lotCode, quantity: Number(quantity), expiresOn }),
     });
     if (res.ok) {
@@ -143,7 +144,7 @@ function App() {
     const body = { ...dispense, patientId: Number(dispense.patientId), itemId: Number(dispense.itemId), lotId: Number(dispense.lotId), quantity: Number(dispense.quantity) };
     const res = await fetch('/api/inventory/dispense', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: auth.token ? `Bearer ${auth.token}` : '' },
       body: JSON.stringify(body),
     });
     if (!res.ok) {
@@ -303,6 +304,15 @@ function App() {
         </div>
 
         <h2>Inventory</h2>
+        <div style={{ marginBottom: 12 }}>
+          <strong>Auth</strong>
+          <form onSubmit={async (e) => { e.preventDefault(); const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: auth.email, password: auth.password }) }); if (res.ok) { const data = await res.json(); setAuth((p) => ({ ...p, token: data.token })); } }}>
+            <input placeholder="email" value={auth.email} onChange={(e) => setAuth({ ...auth, email: e.target.value })} />
+            <input placeholder="password" type="password" value={auth.password} onChange={(e) => setAuth({ ...auth, password: e.target.value })} style={{ marginLeft: 8 }} />
+            <button type="submit" style={{ marginLeft: 8 }}>Login</button>
+            {auth.token && <span style={{ marginLeft: 8, color: 'lightgreen' }}>Logged in</span>}
+          </form>
+        </div>
         <form onSubmit={addItem} style={{ marginBottom: 12 }}>
           <input placeholder="Item name" value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} />
           <input placeholder="Category" value={newItem.category} onChange={(e) => setNewItem({ ...newItem, category: e.target.value })} style={{ marginLeft: 8 }} />

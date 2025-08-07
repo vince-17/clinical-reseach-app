@@ -1,12 +1,65 @@
 const express = require('express');
 const cors = require('cors');
 const { db } = require('./db');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
+
+function createAuditLog(actor, action, entity, entityId, payload) {
+  const createdAt = new Date().toISOString();
+  db.run(
+    'INSERT INTO audit_logs (actor, action, entity, entity_id, payload, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    [actor || null, action, entity, entityId || null, payload ? JSON.stringify(payload) : null, createdAt]
+  );
+}
+
+function authMiddleware(req, res, next) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    req.user = payload;
+    return next();
+  } catch (e) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+}
+
+// Auth routes
+app.post('/api/auth/register', (req, res) => {
+  const { email, password, role = 'coordinator' } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'email and password required' });
+  const hash = bcrypt.hashSync(password, 10);
+  const createdAt = new Date().toISOString();
+  db.run(
+    'INSERT INTO users (email, password_hash, role, created_at) VALUES (?, ?, ?, ?)',
+    [email, hash, role, createdAt],
+    function (err) {
+      if (err) return res.status(400).json({ error: 'User exists or invalid' });
+      createAuditLog(email, 'register', 'user', this.lastID, {});
+      res.status(201).json({ id: this.lastID, email, role });
+    }
+  );
+});
+
+app.post('/api/auth/login', (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'email and password required' });
+  db.get('SELECT * FROM users WHERE email = ?', [email], (err, user) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!bcrypt.compareSync(password, user.password_hash)) return res.status(401).json({ error: 'Invalid credentials' });
+    const token = jwt.sign({ sub: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '8h' });
+    res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
+  });
+});
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'backend', timestamp: new Date().toISOString() });
@@ -20,7 +73,7 @@ app.get('/api/patients', (req, res) => {
   });
 });
 
-app.post('/api/patients', (req, res) => {
+app.post('/api/patients', authMiddleware, (req, res) => {
   const { firstName, lastName, dob } = req.body;
   if (!firstName || !lastName) return res.status(400).json({ error: 'firstName and lastName are required' });
   const createdAt = new Date().toISOString();
@@ -29,17 +82,19 @@ app.post('/api/patients', (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     db.get('SELECT * FROM patients WHERE id = ?', [this.lastID], (e, row) => {
       if (e) return res.status(500).json({ error: e.message });
+      createAuditLog(req.user?.email, 'create', 'patient', row.id, row);
       res.status(201).json(row);
     });
   });
 });
 
-app.delete('/api/patients/:id', (req, res) => {
+app.delete('/api/patients/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
   db.run('DELETE FROM patients WHERE id = ?', [id], function (err) {
     if (err) return res.status(500).json({ error: err.message });
     if (this.changes === 0) return res.status(404).json({ error: 'Not found' });
+    createAuditLog(req.user?.email, 'delete', 'patient', id, {});
     res.status(204).send();
   });
 });
@@ -57,7 +112,7 @@ app.get('/api/appointments', (req, res) => {
   );
 });
 
-app.post('/api/appointments', (req, res) => {
+app.post('/api/appointments', authMiddleware, (req, res) => {
   const { patientId, title, startAt, durationMinutes, resource } = req.body;
   if (!patientId || !title || !startAt || !durationMinutes) {
     return res.status(400).json({ error: 'patientId, title, startAt, durationMinutes are required' });
@@ -92,6 +147,7 @@ app.post('/api/appointments', (req, res) => {
           [this.lastID],
           (gErr, appt) => {
             if (gErr) return res.status(500).json({ error: gErr.message });
+            createAuditLog(req.user?.email, 'create', 'appointment', appt.id, appt);
             res.status(201).json(appt);
           }
         );
@@ -100,12 +156,13 @@ app.post('/api/appointments', (req, res) => {
   );
 });
 
-app.delete('/api/appointments/:id', (req, res) => {
+app.delete('/api/appointments/:id', authMiddleware, (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
   db.run('DELETE FROM appointments WHERE id = ?', [id], function (err) {
     if (err) return res.status(500).json({ error: err.message });
     if (this.changes === 0) return res.status(404).json({ error: 'Not found' });
+    createAuditLog(req.user?.email, 'delete', 'appointment', id, {});
     res.status(204).send();
   });
 });
@@ -195,7 +252,7 @@ app.get('/api/inventory/items', (req, res) => {
   });
 });
 
-app.post('/api/inventory/items', (req, res) => {
+app.post('/api/inventory/items', authMiddleware, (req, res) => {
   const { name, category } = req.body;
   if (!name) return res.status(400).json({ error: 'name is required' });
   const createdAt = new Date().toISOString();
@@ -203,6 +260,7 @@ app.post('/api/inventory/items', (req, res) => {
     if (err) return res.status(500).json({ error: err.message });
     db.get('SELECT * FROM inventory_items WHERE id = ?', [this.lastID], (e, row) => {
       if (e) return res.status(500).json({ error: e.message });
+      createAuditLog(req.user?.email, 'create', 'inventory_item', row.id, row);
       res.status(201).json(row);
     });
   });
@@ -217,7 +275,7 @@ app.get('/api/inventory/items/:itemId/lots', (req, res) => {
   });
 });
 
-app.post('/api/inventory/items/:itemId/lots', (req, res) => {
+app.post('/api/inventory/items/:itemId/lots', authMiddleware, (req, res) => {
   const itemId = Number(req.params.itemId);
   const { lotCode, quantity, expiresOn } = req.body;
   if (!quantity || quantity <= 0) return res.status(400).json({ error: 'quantity must be > 0' });
@@ -229,6 +287,7 @@ app.post('/api/inventory/items/:itemId/lots', (req, res) => {
       if (err) return res.status(500).json({ error: err.message });
       db.get('SELECT * FROM inventory_lots WHERE id = ?', [this.lastID], (e, row) => {
         if (e) return res.status(500).json({ error: e.message });
+        createAuditLog(req.user?.email, 'create', 'inventory_lot', row.id, row);
         res.status(201).json(row);
       });
     }
@@ -236,7 +295,7 @@ app.post('/api/inventory/items/:itemId/lots', (req, res) => {
 });
 
 // Inventory: dispensing
-app.post('/api/inventory/dispense', (req, res) => {
+app.post('/api/inventory/dispense', authMiddleware, (req, res) => {
   const { patientId, itemId, lotId, quantity } = req.body;
   if (!patientId || !itemId || !lotId || !quantity) {
     return res.status(400).json({ error: 'patientId, itemId, lotId, quantity are required' });
@@ -254,7 +313,9 @@ app.post('/api/inventory/dispense', (req, res) => {
         [patientId, itemId, lotId, quantity, createdAt],
         function (iErr) {
           if (iErr) return res.status(500).json({ error: iErr.message });
-          res.status(201).json({ id: this.lastID, patientId, itemId, lotId, quantity, created_at: createdAt });
+          const payload = { id: this.lastID, patientId, itemId, lotId, quantity, created_at: createdAt };
+          createAuditLog(req.user?.email, 'create', 'inventory_dispense', this.lastID, payload);
+          res.status(201).json(payload);
         }
       );
     });

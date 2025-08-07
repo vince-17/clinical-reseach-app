@@ -112,6 +112,17 @@ db.serialize(() => {
   `);
   db.run(`CREATE INDEX IF NOT EXISTS idx_dispenses_item ON inventory_dispenses(item_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_dispenses_patient ON inventory_dispenses(patient_id)`);
+
+  // Users (basic auth)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )
+  `);
 });
 
 module.exports = { db };
