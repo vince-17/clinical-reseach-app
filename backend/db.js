@@ -20,6 +20,21 @@ db.serialize(() => {
       created_at TEXT NOT NULL
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS appointments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      patient_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      start_at TEXT NOT NULL,
+      duration_minutes INTEGER NOT NULL,
+      resource TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(patient_id) REFERENCES patients(id)
+    )
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_appointments_patient ON appointments(patient_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_appointments_start ON appointments(start_at)`);
 });
 
 module.exports = { db };

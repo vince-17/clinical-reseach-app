@@ -44,6 +44,72 @@ app.delete('/api/patients/:id', (req, res) => {
   });
 });
 
+// Appointments: basic MVP with visit-window-like constraint and double-book prevention by patient and resource
+app.get('/api/appointments', (req, res) => {
+  db.all(
+    `SELECT a.*, p.first_name, p.last_name
+     FROM appointments a JOIN patients p ON p.id = a.patient_id
+     ORDER BY a.start_at DESC`,
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(rows);
+    }
+  );
+});
+
+app.post('/api/appointments', (req, res) => {
+  const { patientId, title, startAt, durationMinutes, resource } = req.body;
+  if (!patientId || !title || !startAt || !durationMinutes) {
+    return res.status(400).json({ error: 'patientId, title, startAt, durationMinutes are required' });
+  }
+  // Prevent overlapping for the same patient and same resource (if provided)
+  const endAtExpr = `datetime(?, '+' || ? || ' minutes')`;
+  const overlapQuery = `
+    SELECT 1 FROM appointments
+    WHERE (
+      patient_id = ? OR (resource IS NOT NULL AND resource = ?)
+    ) AND (
+      start_at < ${endAtExpr} AND ${endAtExpr} > start_at
+    )
+    LIMIT 1
+  `;
+  db.get(
+    overlapQuery,
+    [patientId, resource || '', startAt, durationMinutes, startAt, durationMinutes],
+    (err, row) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (row) return res.status(409).json({ error: 'Overlapping appointment detected' });
+
+      const createdAt = new Date().toISOString();
+      const stmt = db.prepare(
+        `INSERT INTO appointments (patient_id, title, start_at, duration_minutes, resource, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      );
+      stmt.run(patientId, title, startAt, durationMinutes, resource || null, createdAt, function (e) {
+        if (e) return res.status(500).json({ error: e.message });
+        db.get(
+          `SELECT a.*, p.first_name, p.last_name FROM appointments a JOIN patients p ON p.id = a.patient_id WHERE a.id = ?`,
+          [this.lastID],
+          (gErr, appt) => {
+            if (gErr) return res.status(500).json({ error: gErr.message });
+            res.status(201).json(appt);
+          }
+        );
+      });
+    }
+  );
+});
+
+app.delete('/api/appointments/:id', (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
+  db.run('DELETE FROM appointments WHERE id = ?', [id], function (err) {
+    if (err) return res.status(500).json({ error: err.message });
+    if (this.changes === 0) return res.status(404).json({ error: 'Not found' });
+    res.status(204).send();
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Backend listening on http://localhost:${PORT}`);
 });
