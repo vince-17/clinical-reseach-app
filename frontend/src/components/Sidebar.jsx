@@ -1,3 +1,4 @@
+import { NavLink } from 'react-router-dom';
 export default function Sidebar({ current, onNavigate }) {
   const items = [
     ['dashboard', 'Dashboard'],
@@ -11,17 +12,9 @@ export default function Sidebar({ current, onNavigate }) {
       <div className="group">Navigation</div>
       <nav className="nav">
         {items.map(([key, label]) => (
-          <a
-            key={key}
-            href="#"
-            className={current === key ? 'active' : ''}
-            onClick={(e) => {
-              e.preventDefault();
-              onNavigate(key);
-            }}
-          >
+          <NavLink key={key} to={`/${key}`} className={({ isActive }) => (isActive ? 'active' : '')}>
             {label}
-          </a>
+          </NavLink>
         ))}
       </nav>
     </aside>

@@ -3,6 +3,7 @@ import PatientsList from './components/PatientsList.jsx';
 import Topbar from './components/Topbar.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import { BrowserRouter } from 'react-router-dom';
 import './App.css';
 
 function AppShell() {
@@ -461,8 +462,10 @@ function AppShell() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppShell />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <AppShell />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
