@@ -6,8 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard.jsx';
 import PatientsPage from './pages/Patients.jsx';
 import AppointmentsPage from './pages/Appointments.jsx';
-import InventoryPage from './pages/Inventory.jsx';
-import InventoryBasicPage from './pages/InventoryBasic.jsx';
+// Removed legacy inventory imports
+import InventoryModern from './pages/InventoryModern.jsx';
 import AdminPage from './pages/Admin.jsx';
 import './App.css';
 import { Toast } from './components/Toast.jsx';
@@ -19,11 +19,7 @@ function AppShell() {
   const [form, setForm] = useState({ firstName: '', lastName: '', dob: '', baselineDate: '' });
   const [appointments, setAppointments] = useState([]);
   const [apptForm, setApptForm] = useState({ patientId: '', title: '', startAt: '', durationMinutes: 30, resource: '', resourceId: '', visitTypeId: '' });
-  const [items, setItems] = useState([]);
-  const [newItem, setNewItem] = useState({ name: '', category: '' });
-  const [lots, setLots] = useState([]);
-  const [newLot, setNewLot] = useState({ itemId: '', lotCode: '', quantity: 1, expiresOn: '' });
-  const [dispense, setDispense] = useState({ patientId: '', itemId: '', lotId: '', quantity: 1 });
+  // Legacy inventory state removed
   const [visitTypes, setVisitTypes] = useState([]);
   const [newVisitType, setNewVisitType] = useState({ name: '', offsetDays: 0, windowMinusDays: 0, windowPlusDays: 0, defaultDurationMinutes: 30 });
   const [resources, setResources] = useState([]);
@@ -32,7 +28,7 @@ function AppShell() {
   const [dashboard, setDashboard] = useState(null);
   const [patientQuery, setPatientQuery] = useState('');
   const [apptQuery, setApptQuery] = useState('');
-  const [itemQuery, setItemQuery] = useState('');
+  // Legacy item search removed
   const [toast, setToast] = useState({ message: '', type: 'info' });
   const [loading, setLoading] = useState({
     addPatient: false,
@@ -66,10 +62,7 @@ function AppShell() {
       .then(setAppointments)
       .catch(() => {});
 
-    fetch('/api/inventory/items')
-      .then((res) => res.json())
-      .then(setItems)
-      .catch(() => {});
+           // legacy inventory fetch removed
 
     fetch('/api/visit-types')
       .then((res) => res.json())
@@ -192,93 +185,15 @@ function AppShell() {
     setAppointments((prev) => prev.filter((a) => a.id !== id));
   };
 
-  const addItem = async (e) => {
-    e.preventDefault();
-    setLoading((p)=>({ ...p, addItem: true }));
-    const res = await fetch('/api/inventory/items', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: auth.token ? `Bearer ${auth.token}` : '' },
-      body: JSON.stringify(newItem),
-    });
-    if (res.ok) {
-      const created = await res.json();
-      setItems((prev) => [created, ...prev]);
-      setNewItem({ name: '', category: '' });
-      setToast({ message: 'Item added', type: 'success' });
-    }
-    setLoading((p)=>({ ...p, addItem: false }));
-  };
+  // legacy inventory handlers removed
 
-  const updateItem = async (id, partial) => {
-    try {
-      const res = await fetch(`/api/inventory/items/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: auth.token ? `Bearer ${auth.token}` : '' },
-        body: JSON.stringify(partial),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(()=>({}));
-        throw new Error(err.error || 'Update failed');
-      }
-      const updated = await res.json();
-      setItems((prev)=> prev.map((it)=> it.id === id ? updated : it));
-      setToast({ message: 'Item updated', type: 'success' });
-    } catch (e) {
-      setError(e.message);
-      setToast({ message: e.message, type: 'error' });
-    }
-  };
+  // legacy inventory handlers removed
 
-  const loadLots = async (itemId) => {
-    setNewLot((p) => ({ ...p, itemId }));
-    const res = await fetch(`/api/inventory/items/${itemId}/lots`);
-    if (res.ok) {
-      const data = await res.json();
-      setLots(data);
-    }
-  };
+  // legacy inventory handlers removed
 
-  const addLot = async (e) => {
-    e.preventDefault();
-    setLoading((p)=>({ ...p, addLot: true }));
-    const { itemId, lotCode, quantity, expiresOn } = newLot;
-    if (!itemId) return;
-    const res = await fetch(`/api/inventory/items/${itemId}/lots`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: auth.token ? `Bearer ${auth.token}` : '' },
-      body: JSON.stringify({ lotCode, quantity: Number(quantity), expiresOn }),
-    });
-    if (res.ok) {
-      const created = await res.json();
-      setLots((prev) => [created, ...prev]);
-      setNewLot({ itemId, lotCode: '', quantity: 1, expiresOn: '' });
-      setToast({ message: 'Lot added', type: 'success' });
-    }
-    setLoading((p)=>({ ...p, addLot: false }));
-  };
+  // legacy inventory handlers removed
 
-  const doDispense = async (e) => {
-    e.preventDefault();
-    setLoading((p)=>({ ...p, dispense: true }));
-    const body = { ...dispense, patientId: Number(dispense.patientId), itemId: Number(dispense.itemId), lotId: Number(dispense.lotId), quantity: Number(dispense.quantity) };
-    const res = await fetch('/api/inventory/dispense', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: auth.token ? `Bearer ${auth.token}` : '' },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      setError(err.error || 'Dispense failed');
-      setToast({ message: err.error || 'Dispense failed', type: 'error' });
-    } else {
-      setError(null);
-      setDispense({ patientId: '', itemId: '', lotId: '', quantity: 1 });
-      // refresh lots for selected item
-      if (body.itemId) loadLots(body.itemId);
-      setToast({ message: 'Dispensed', type: 'success' });
-    }
-    setLoading((p)=>({ ...p, dispense: false }));
-  };
+  // legacy inventory handlers removed
 
   return (
     <div>
@@ -293,7 +208,7 @@ function AppShell() {
               <Route path="/dashboard" element={<Dashboard dashboard={dashboard} />} />
               <Route path="/patients" element={<PatientsPage patients={patients} patientQuery={patientQuery} setPatientQuery={setPatientQuery} form={form} setForm={setForm} addPatient={addPatient} updatePatient={updatePatient} deletePatient={deletePatient} onDeleteConfirm={async (id)=>{ if (window.confirm('Delete this patient? This cannot be undone.')) { await deletePatient(id); setToast({ message: 'Patient deleted', type: 'success' }); } }} loading={loading} />} />
               <Route path="/appointments" element={<AppointmentsPage patients={patients} appointments={appointments} visitTypes={visitTypes} resources={resources} apptForm={apptForm} setApptForm={setApptForm} apptQuery={apptQuery} setApptQuery={setApptQuery} addAppointment={addAppointment} deleteAppointment={async (id)=>{ if (window.confirm('Delete appointment?')) { await deleteAppointment(id); setToast({ message: 'Appointment deleted', type: 'success' }); } }} updateAppointment={updateAppointment} loading={loading} />} />
-              <Route path="/inventory" element={<InventoryBasicPage />} />
+              <Route path="/inventory" element={<InventoryModern />} />
               <Route path="/admin" element={<AdminPage auth={auth} setAuth={setAuth} newVisitType={newVisitType} setNewVisitType={setNewVisitType} visitTypes={visitTypes} newResource={newResource} setNewResource={setNewResource} resources={resources} onAddVisitType={async (e) => { e.preventDefault(); const res = await fetch('/api/visit-types', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newVisitType) }); if (res.ok) { const vt = await res.json(); setVisitTypes((p) => [vt, ...p]); setNewVisitType({ name: '', offsetDays: 0, windowMinusDays: 0, windowPlusDays: 0, defaultDurationMinutes: 30 }); } }} onAddResource={async (e) => { e.preventDefault(); const res = await fetch('/api/resources', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newResource) }); if (res.ok) { const r = await res.json(); setResources((p) => [r, ...p]); setNewResource({ name: '', category: '' }); } }} />} />
             </Routes>
           </div>

@@ -84,6 +84,36 @@ module.exports = function attachBasicInventory(app) {
       res.status(500).json({ error: e.message });
     }
   });
+
+  app.delete('/api/basic/inventory/:id', async (req, res) => {
+    try {
+      await ensureSchema();
+      const id = Number(req.params.id);
+      if (!Number.isFinite(id)) return res.status(400).json({ error: 'invalid id' });
+      const result = await run(`DELETE FROM inventory WHERE id = ?`, [id]);
+      if (result.changes === 0) return res.status(404).json({ error: 'not found' });
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  app.patch('/api/basic/inventory/:id', async (req, res) => {
+    try {
+      await ensureSchema();
+      const id = Number(req.params.id);
+      if (!Number.isFinite(id)) return res.status(400).json({ error: 'invalid id' });
+      const { quantity } = req.body || {};
+      if (!Number.isFinite(Number(quantity)) || Number(quantity) < 0) {
+        return res.status(400).json({ error: 'quantity must be a non-negative number' });
+      }
+      const result = await run(`UPDATE inventory SET quantity = ? WHERE id = ?`, [Number(quantity), id]);
+      if (result.changes === 0) return res.status(404).json({ error: 'not found' });
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
 };
 
 

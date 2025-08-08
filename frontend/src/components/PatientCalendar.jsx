@@ -7,13 +7,6 @@ function startOfMonth(date) {
   d.setHours(0, 0, 0, 0);
   return d;
 }
-function endOfMonth(date) {
-  const d = new Date(date);
-  d.setMonth(d.getMonth() + 1);
-  d.setDate(0);
-  d.setHours(23, 59, 59, 999);
-  return d;
-}
 function startOfWeek(date) {
   const d = new Date(date);
   const day = d.getDay();
