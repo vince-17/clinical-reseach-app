@@ -3,6 +3,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { db } = require('./db');
+const attachBasicInventory = require('./basic-inventory');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -275,5 +276,8 @@ app.get('/api/dashboard', async (_req, res) => {
 app.listen(PORT, () => {
   console.log(`Backend listening on http://localhost:${PORT}`);
 });
+
+// Basic inventory (beginner module)
+attachBasicInventory(app);
 
 
