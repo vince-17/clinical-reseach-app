@@ -11,6 +11,7 @@ export default function PatientsPage({
   addPatient,
   updatePatient,
   deletePatient,
+  onDeleteConfirm,
 }) {
   const [editing, setEditing] = React.useState(null);
   const [editValues, setEditValues] = React.useState({ firstName: '', lastName: '' });
@@ -38,7 +39,7 @@ export default function PatientsPage({
         query={patientQuery}
         onQueryChange={setPatientQuery}
         onEdit={openEdit}
-        onDelete={deletePatient}
+        onDelete={(id)=> onDeleteConfirm ? onDeleteConfirm(id) : deletePatient(id)}
       />
 
       <Modal open={!!editing} title="Edit patient" onClose={() => setEditing(null)} footer={[

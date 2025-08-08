@@ -16,6 +16,8 @@ export default function InventoryPage({
   doDispense,
   patients,
   loading,
+  itemQuery,
+  setItemQuery,
 }) {
   const [editingItem, setEditingItem] = React.useState(null);
   const [editItemValues, setEditItemValues] = React.useState({ name:'', category:'' });
@@ -24,6 +26,11 @@ export default function InventoryPage({
   return (
     <>
       <h2>Inventory</h2>
+      <form onSubmit={addItem} style={{ marginBottom: 12 }}>
+        <input placeholder="Item name" value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} />
+        <input placeholder="Category" value={newItem.category} onChange={(e) => setNewItem({ ...newItem, category: e.target.value })} style={{ marginLeft: 8 }} />
+        <button type="submit" style={{ marginLeft: 8 }} disabled={loading?.addItem}>Add Item</button>
+      </form>
 
       <form onSubmit={addItem} style={{ marginBottom: 12 }}>
         <input placeholder="Item name" value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} />
@@ -33,8 +40,9 @@ export default function InventoryPage({
       <div style={{ display: 'flex', gap: 24 }}>
         <div style={{ width: 300, textAlign: 'left' }}>
           <strong>Items</strong>
+          <input placeholder="Search items" value={itemQuery} onChange={(e)=>setItemQuery(e.target.value)} style={{ width:'100%', margin:'8px 0' }} />
           <ul>
-            {items.map((it) => (
+            {items.filter((it)=>it.name.toLowerCase().includes(itemQuery.toLowerCase())).map((it) => (
               <li key={it.id}>
                 <button onClick={() => loadLots(it.id)} style={{ marginRight: 8 }}>View Lots</button>
                 {it.name} {it.category ? `(${it.category})` : ''}
@@ -55,7 +63,7 @@ export default function InventoryPage({
             <input placeholder="Lot code" value={newLot.lotCode} onChange={(e) => setNewLot({ ...newLot, lotCode: e.target.value })} style={{ marginLeft: 8 }} />
             <input type="number" min="1" value={newLot.quantity} onChange={(e) => setNewLot({ ...newLot, quantity: e.target.value })} style={{ marginLeft: 8, width: 80 }} />
             <input type="date" value={newLot.expiresOn} onChange={(e) => setNewLot({ ...newLot, expiresOn: e.target.value })} style={{ marginLeft: 8 }} />
-            <button type="submit" style={{ marginLeft: 8 }}>Add Lot</button>
+            <button type="submit" style={{ marginLeft: 8 }} disabled={loading?.addLot}>Add Lot</button>
           </form>
           <ul>
             {lots.map((lot) => (
@@ -88,7 +96,7 @@ export default function InventoryPage({
           ))}
         </select>
         <input type="number" min="1" value={dispense.quantity} onChange={(e) => setDispense({ ...dispense, quantity: e.target.value })} style={{ marginLeft: 8, width: 80 }} />
-        <button type="submit" style={{ marginLeft: 8 }}>Dispense</button>
+        <button type="submit" style={{ marginLeft: 8 }} disabled={loading?.dispense}>Dispense</button>
       </form>
 
       <div style={{ marginTop: 16 }}>
