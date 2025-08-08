@@ -143,9 +143,9 @@ const Spinner = styled.div`
   animation: ${spin} 700ms linear infinite;
 `;
 
-export default function AddInventoryModal({ open, onClose, onSave, studies = [] }) {
+export default function AddInventoryModal({ open, onClose, onSave, studies = [], defaultStudy = '' }) {
   const [itemName, setItemName] = useState('');
-  const [study, setStudy] = useState('');
+  const [study, setStudy] = useState(defaultStudy || '');
   const [quantity, setQuantity] = useState('');
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -196,6 +196,10 @@ export default function AddInventoryModal({ open, onClose, onSave, studies = [] 
       setSaving(false);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (defaultStudy && !study) setStudy(defaultStudy);
+  }, [defaultStudy]);
 
   
 

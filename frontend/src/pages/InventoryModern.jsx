@@ -40,6 +40,19 @@ export default function InventoryModern() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [studies, setStudies] = useState([]);
+  const studyOptions = React.useMemo(() => {
+    const map = new Map();
+    for (const s of studies) {
+      if (!s) continue;
+      const key = (s.study_name || '').trim();
+      if (key && !map.has(key)) map.set(key, { study_name: s.study_name, study_id: s.study_id, id: s.id });
+    }
+    for (const r of rows) {
+      const key = (r.study_name || '').trim();
+      if (key && !map.has(key)) map.set(key, { study_name: r.study_name, study_id: r.study_id, id: r.id });
+    }
+    return Array.from(map.values()).sort((a, b) => a.study_name.localeCompare(b.study_name));
+  }, [studies, rows]);
 
   const loadRows = React.useCallback(async function loadRows() {
     setLoading(true);
@@ -62,7 +75,7 @@ export default function InventoryModern() {
 
   async function handleSave(newRow) {
     await api('/api/basic/inventory/new', { method: 'POST', token, body: newRow });
-    await loadRows();
+    await Promise.all([loadRows(), loadStudies()]);
     setSuccess('Inventory added');
     setTimeout(() => setSuccess(''), 1800);
   }
@@ -70,7 +83,7 @@ export default function InventoryModern() {
   async function handleDelete(row) {
     if (!window.confirm('Delete this inventory item?')) return;
     await api(`/api/basic/inventory/${row.id}`, { method: 'DELETE', token });
-    await loadRows();
+    await Promise.all([loadRows(), loadStudies()]);
   }
 
   async function handleEdit(row) {
@@ -118,7 +131,8 @@ export default function InventoryModern() {
           await handleSave(payload);
           setIsModalOpen(false);
         }}
-        studies={studies}
+        studies={studyOptions}
+        defaultStudy={rows[0]?.study_name || ''}
       />
     </Page>
   );
