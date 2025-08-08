@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { api } from '../api';
 
 export default function BasicInventoryForm({ onAdded }) {
   const [f, setF] = useState({ item_name: '', item_description: '', study_name: '', study_id: '', quantity: 0 });
@@ -7,18 +8,13 @@ export default function BasicInventoryForm({ onAdded }) {
   async function onSubmit(e) {
     e.preventDefault();
     setMsg('');
-    const res = await fetch('/api/basic/inventory/new', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(f),
-    });
-    if (res.ok) {
+    try {
+      await api('/api/basic/inventory/new', { method: 'POST', body: f });
       setMsg('Saved');
       setF({ item_name: '', item_description: '', study_name: '', study_id: '', quantity: 0 });
       onAdded && onAdded();
-    } else {
-      const err = await res.json().catch(()=>({error:'Failed'}));
-      setMsg(err.error || 'Failed');
+    } catch (e) {
+      setMsg(e.message || 'Failed');
     }
   }
 

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { api } from '../api';
 
 export default function BasicInventoryTable({ reloadKey = 0 }) {
   const [rows, setRows] = useState([]);
   useEffect(() => {
-    fetch('/api/basic/inventory').then(r => r.json()).then(setRows);
+    api('/api/basic/inventory').then(setRows).catch(()=>setRows([]));
   }, [reloadKey]);
 
   return (
