@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
-import PatientsList from './components/PatientsList.jsx';
 import Topbar from './components/Topbar.jsx';
 import Sidebar from './components/Sidebar.jsx';
-import { AuthProvider, useAuth } from './context/AuthContext.jsx';
-import { BrowserRouter } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext.jsx';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Dashboard from './pages/Dashboard.jsx';
+import PatientsPage from './pages/Patients.jsx';
+import AppointmentsPage from './pages/Appointments.jsx';
+import InventoryPage from './pages/Inventory.jsx';
+import AdminPage from './pages/Admin.jsx';
 import './App.css';
 
 function AppShell() {
@@ -197,263 +201,19 @@ function AppShell() {
     <div>
       <Topbar online={!!health} />
       <div className="layout">
-        <Sidebar current={tab} onNavigate={setTab} />
+        <Sidebar />
         <main className="content">
-      <div className="container">
-        <h1 id="dash">Clinical Research App</h1>
-        <p>Frontend connected to backend.</p>
-        {dashboard && (
-          <div style={{ display: 'flex', gap: 16 }}>
-            <div>Patients: {dashboard.patients}</div>
-            <div>Upcoming appts: {dashboard.upcomingAppointments}</div>
-            <div>Low-stock lots: {dashboard.lowStockLots}</div>
-            <div>Expiring soon lots: {dashboard.expiringSoonLots}</div>
+          <div className="container">
+            {error && <p style={{ color: 'salmon' }}>Error: {error}</p>}
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<Dashboard dashboard={dashboard} />} />
+              <Route path="/patients" element={<PatientsPage patients={patients} patientQuery={patientQuery} setPatientQuery={setPatientQuery} form={form} setForm={setForm} addPatient={addPatient} updatePatient={updatePatient} deletePatient={deletePatient} />} />
+              <Route path="/appointments" element={<AppointmentsPage patients={patients} appointments={appointments} visitTypes={visitTypes} resources={resources} apptForm={apptForm} setApptForm={setApptForm} apptQuery={apptQuery} setApptQuery={setApptQuery} addAppointment={addAppointment} deleteAppointment={deleteAppointment} />} />
+              <Route path="/inventory" element={<InventoryPage auth={auth} setAuth={setAuth} items={items} newItem={newItem} setNewItem={setNewItem} addItem={addItem} lots={lots} newLot={newLot} setNewLot={setNewLot} loadLots={loadLots} addLot={addLot} dispense={dispense} setDispense={setDispense} doDispense={doDispense} patients={patients} />} />
+              <Route path="/admin" element={<AdminPage newVisitType={newVisitType} setNewVisitType={setNewVisitType} visitTypes={visitTypes} newResource={newResource} setNewResource={setNewResource} resources={resources} onAddVisitType={async (e) => { e.preventDefault(); const res = await fetch('/api/visit-types', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newVisitType) }); if (res.ok) { const vt = await res.json(); setVisitTypes((p) => [vt, ...p]); setNewVisitType({ name: '', offsetDays: 0, windowMinusDays: 0, windowPlusDays: 0, defaultDurationMinutes: 30 }); } }} onAddResource={async (e) => { e.preventDefault(); const res = await fetch('/api/resources', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newResource) }); if (res.ok) { const r = await res.json(); setResources((p) => [r, ...p]); setNewResource({ name: '', category: '' }); } }} />} />
+            </Routes>
           </div>
-        )}
-        {health && (
-          <pre style={{ textAlign: 'left' }}>{JSON.stringify(health, null, 2)}</pre>
-        )}
-        {error && <p style={{ color: 'salmon' }}>Error: {error}</p>}
-
-        <h2 id="patients">Patients</h2>
-        <form onSubmit={addPatient} style={{ marginBottom: 16 }}>
-          <input
-            placeholder="First name"
-            value={form.firstName}
-            onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-          />
-          <input
-            placeholder="Last name"
-            value={form.lastName}
-            onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-            style={{ marginLeft: 8 }}
-          />
-          <input
-            placeholder="DOB (YYYY-MM-DD)"
-            value={form.dob}
-            onChange={(e) => setForm({ ...form, dob: e.target.value })}
-            style={{ marginLeft: 8 }}
-          />
-          <input
-            type="date"
-            placeholder="Baseline date"
-            value={form.baselineDate}
-            onChange={(e) => setForm({ ...form, baselineDate: e.target.value })}
-            style={{ marginLeft: 8 }}
-          />
-          <button type="submit" style={{ marginLeft: 8 }}>
-            Add
-          </button>
-        </form>
-        <PatientsList
-          patients={patients}
-          query={patientQuery}
-          onQueryChange={setPatientQuery}
-          onEdit={(p) => {
-            const firstName = window.prompt('First name', p.first_name) ?? p.first_name;
-            const lastName = window.prompt('Last name', p.last_name) ?? p.last_name;
-            updatePatient(p.id, { firstName, lastName });
-          }}
-          onDelete={deletePatient}
-        />
-
-        <h2 id="appointments">Appointments</h2>
-        <div style={{ margin: '8px 0' }}>
-          <input placeholder="Search appointments" value={apptQuery} onChange={(e)=>setApptQuery(e.target.value)} />
-        </div>
-        <form onSubmit={addAppointment} style={{ marginBottom: 16 }}>
-          <select
-            value={apptForm.patientId}
-            onChange={(e) => setApptForm({ ...apptForm, patientId: e.target.value })}
-          >
-            <option value="">Select patient</option>
-            {patients.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.first_name} {p.last_name}
-              </option>
-            ))}
-          </select>
-          <input
-            placeholder="Title (e.g., Screening Visit)"
-            value={apptForm.title}
-            onChange={(e) => setApptForm({ ...apptForm, title: e.target.value })}
-            style={{ marginLeft: 8 }}
-          />
-          <select value={apptForm.visitTypeId} onChange={(e) => setApptForm({ ...apptForm, visitTypeId: e.target.value })} style={{ marginLeft: 8 }}>
-            <option value="">Visit type</option>
-            {visitTypes.map((vt) => (
-              <option key={vt.id} value={vt.id}>{vt.name}</option>
-            ))}
-          </select>
-          <input
-            type="datetime-local"
-            value={apptForm.startAt}
-            onChange={(e) => setApptForm({ ...apptForm, startAt: e.target.value })}
-            style={{ marginLeft: 8 }}
-          />
-          <input
-            type="number"
-            min="5"
-            step="5"
-            value={apptForm.durationMinutes}
-            onChange={(e) => setApptForm({ ...apptForm, durationMinutes: e.target.value })}
-            style={{ marginLeft: 8, width: 80 }}
-          />
-          <select value={apptForm.resourceId} onChange={(e) => setApptForm({ ...apptForm, resourceId: e.target.value })} style={{ marginLeft: 8 }}>
-            <option value="">Select resource</option>
-            {resources.map((r) => (
-              <option key={r.id} value={r.id}>{r.name}</option>
-            ))}
-          </select>
-          <input
-            placeholder="Resource (e.g., Room 1)"
-            value={apptForm.resource}
-            onChange={(e) => setApptForm({ ...apptForm, resource: e.target.value })}
-            style={{ marginLeft: 8 }}
-          />
-          <button type="submit" style={{ marginLeft: 8 }}>
-            Schedule
-          </button>
-        </form>
-        <ul style={{ width: 720, textAlign: 'left' }}>
-          {appointments.filter((a)=>`${a.title} ${a.first_name} ${a.last_name}`.toLowerCase().includes(apptQuery.toLowerCase())).map((a) => (
-            <li key={a.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span>
-                {a.title} — {a.first_name} {a.last_name} — {new Date(a.start_at).toLocaleString()} — {a.duration_minutes}m {a.resource ? `— ${a.resource}` : ''}
-              </span>
-              <button onClick={() => deleteAppointment(a.id)}>Delete</button>
-            </li>
-          ))}
-        </ul>
-
-        <h3 id="admin">Visit Types</h3>
-        <form onSubmit={async (e) => {
-          e.preventDefault();
-          const res = await fetch('/api/visit-types', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newVisitType) });
-          if (res.ok) {
-            const vt = await res.json();
-            setVisitTypes((p) => [vt, ...p]);
-            setNewVisitType({ name: '', offsetDays: 0, windowMinusDays: 0, windowPlusDays: 0, defaultDurationMinutes: 30 });
-          }
-        }}>
-          <input placeholder="Name" value={newVisitType.name} onChange={(e) => setNewVisitType({ ...newVisitType, name: e.target.value })} />
-          <input type="number" style={{ marginLeft: 8, width: 90 }} placeholder="Offset" value={newVisitType.offsetDays} onChange={(e) => setNewVisitType({ ...newVisitType, offsetDays: Number(e.target.value) })} />
-          <input type="number" style={{ marginLeft: 8, width: 90 }} placeholder="Win -" value={newVisitType.windowMinusDays} onChange={(e) => setNewVisitType({ ...newVisitType, windowMinusDays: Number(e.target.value) })} />
-          <input type="number" style={{ marginLeft: 8, width: 90 }} placeholder="Win +" value={newVisitType.windowPlusDays} onChange={(e) => setNewVisitType({ ...newVisitType, windowPlusDays: Number(e.target.value) })} />
-          <input type="number" style={{ marginLeft: 8, width: 120 }} placeholder="Duration" value={newVisitType.defaultDurationMinutes} onChange={(e) => setNewVisitType({ ...newVisitType, defaultDurationMinutes: Number(e.target.value) })} />
-          <button type="submit" style={{ marginLeft: 8 }}>Add</button>
-        </form>
-        <ul style={{ textAlign: 'left' }}>
-          {visitTypes.map((vt) => (
-            <li key={vt.id}>{vt.name} — offset {vt.offset_days}d, window [-{vt.window_minus_days}, +{vt.window_plus_days}], default {vt.default_duration_minutes}m</li>
-          ))}
-        </ul>
-
-        <h3>Resources</h3>
-        <form onSubmit={async (e) => {
-          e.preventDefault();
-          const res = await fetch('/api/resources', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newResource) });
-          if (res.ok) {
-            const r = await res.json();
-            setResources((p) => [r, ...p]);
-            setNewResource({ name: '', category: '' });
-          }
-        }}>
-          <input placeholder="Resource name" value={newResource.name} onChange={(e) => setNewResource({ ...newResource, name: e.target.value })} />
-          <input placeholder="Category" value={newResource.category} onChange={(e) => setNewResource({ ...newResource, category: e.target.value })} style={{ marginLeft: 8 }} />
-          <button type="submit" style={{ marginLeft: 8 }}>Add</button>
-        </form>
-        <ul style={{ textAlign: 'left' }}>
-          {resources.map((r) => (
-            <li key={r.id}>{r.name} {r.category ? `(${r.category})` : ''}</li>
-          ))}
-        </ul>
-
-        <div style={{ marginTop: 16 }}>
-          <a href="/api/inventory/report.csv" target="_blank" rel="noreferrer">Download Inventory CSV</a>
-        </div>
-        <div style={{ marginTop: 16, textAlign: 'left', width: 720 }}>
-          <strong>Audit Logs (latest 200)</strong>
-          <button onClick={async () => { const res = await fetch('/api/audit-logs'); if (res.ok) { const data = await res.json(); alert(JSON.stringify(data.slice(0, 10), null, 2)); } }} style={{ marginLeft: 8 }}>Preview</button>
-        </div>
-
-        <h2 id="inventory">Inventory</h2>
-        <div style={{ marginBottom: 12 }}>
-          <strong>Auth</strong>
-          <form onSubmit={async (e) => { e.preventDefault(); const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: auth.email, password: auth.password }) }); if (res.ok) { const data = await res.json(); setAuth((p) => ({ ...p, token: data.token })); localStorage.setItem('auth_token', data.token); } }}>
-            <input placeholder="email" value={auth.email} onChange={(e) => setAuth({ ...auth, email: e.target.value })} />
-            <input placeholder="password" type="password" value={auth.password} onChange={(e) => setAuth({ ...auth, password: e.target.value })} style={{ marginLeft: 8 }} />
-            <button type="submit" style={{ marginLeft: 8 }}>Login</button>
-            {auth.token && <span style={{ marginLeft: 8, color: 'lightgreen' }}>Logged in</span>}
-          </form>
-          {auth.token && <button onClick={() => setAuth({ email: '', password: '', token: '' })} style={{ marginTop: 8 }}>Logout</button>}
-        </div>
-        <form onSubmit={addItem} style={{ marginBottom: 12 }}>
-          <input placeholder="Item name" value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} />
-          <input placeholder="Category" value={newItem.category} onChange={(e) => setNewItem({ ...newItem, category: e.target.value })} style={{ marginLeft: 8 }} />
-          <button type="submit" style={{ marginLeft: 8 }}>Add Item</button>
-        </form>
-        <div style={{ display: 'flex', gap: 24 }}>
-          <div style={{ width: 300, textAlign: 'left' }}>
-            <strong>Items</strong>
-            <input placeholder="Search items" value={itemQuery} onChange={(e)=>setItemQuery(e.target.value)} style={{ width:'100%', margin:'8px 0' }} />
-            <ul>
-              {items.filter((it)=>it.name.toLowerCase().includes(itemQuery.toLowerCase())).map((it) => (
-                <li key={it.id}>
-                  <button onClick={() => loadLots(it.id)} style={{ marginRight: 8 }}>View Lots</button>
-                  {it.name} {it.category ? `(${it.category})` : ''}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div style={{ flex: 1, textAlign: 'left' }}>
-            <strong>Lots</strong>
-            <form onSubmit={addLot} style={{ marginBottom: 12 }}>
-              <select value={newLot.itemId} onChange={(e) => loadLots(e.target.value)}>
-                <option value="">Select item</option>
-                {items.map((it) => (
-                  <option key={it.id} value={it.id}>{it.name}</option>
-                ))}
-              </select>
-              <input placeholder="Lot code" value={newLot.lotCode} onChange={(e) => setNewLot({ ...newLot, lotCode: e.target.value })} style={{ marginLeft: 8 }} />
-              <input type="number" min="1" value={newLot.quantity} onChange={(e) => setNewLot({ ...newLot, quantity: e.target.value })} style={{ marginLeft: 8, width: 80 }} />
-              <input type="date" value={newLot.expiresOn} onChange={(e) => setNewLot({ ...newLot, expiresOn: e.target.value })} style={{ marginLeft: 8 }} />
-              <button type="submit" style={{ marginLeft: 8 }}>Add Lot</button>
-            </form>
-            <ul>
-              {lots.map((lot) => (
-                <li key={lot.id}>
-                  {lot.lot_code || 'N/A'} — Qty: {lot.quantity} — Expires: {lot.expires_on || 'N/A'}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        <h3>Dispense</h3>
-        <form onSubmit={doDispense}>
-          <select value={dispense.patientId} onChange={(e) => setDispense({ ...dispense, patientId: e.target.value })}>
-            <option value="">Select patient</option>
-            {patients.map((p) => (
-              <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>
-            ))}
-          </select>
-          <select value={dispense.itemId} onChange={(e) => { setDispense({ ...dispense, itemId: e.target.value, lotId: '' }); loadLots(e.target.value); }} style={{ marginLeft: 8 }}>
-            <option value="">Select item</option>
-            {items.map((it) => (
-              <option key={it.id} value={it.id}>{it.name}</option>
-            ))}
-          </select>
-          <select value={dispense.lotId} onChange={(e) => setDispense({ ...dispense, lotId: e.target.value })} style={{ marginLeft: 8 }}>
-            <option value="">Select lot</option>
-            {lots.map((l) => (
-              <option key={l.id} value={l.id}>{l.lot_code || 'N/A'} (Qty {l.quantity})</option>
-            ))}
-          </select>
-          <input type="number" min="1" value={dispense.quantity} onChange={(e) => setDispense({ ...dispense, quantity: e.target.value })} style={{ marginLeft: 8, width: 80 }} />
-          <button type="submit" style={{ marginLeft: 8 }}>Dispense</button>
-        </form>
-      </div>
         </main>
       </div>
     </div>
