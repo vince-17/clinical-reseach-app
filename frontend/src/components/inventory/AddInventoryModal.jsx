@@ -25,12 +25,15 @@ const Overlay = styled.div`
 
 const Sheet = styled.div`
   width: min(560px, 92vw);
+  max-height: 90vh;
   background: #ffffff;
   border-radius: 14px;
   border: 1px solid #e2e8f0;
   box-shadow: 0 20px 60px rgba(2, 6, 23, 0.25);
   animation: ${zoomIn} 140ms ease;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 `;
 
 const Header = styled.div`
@@ -64,6 +67,8 @@ const Body = styled.div`
   padding: 16px;
   display: grid;
   gap: 12px;
+  overflow-y: auto;
+  flex: 1;
 `;
 
 const Field = styled.div`
@@ -103,6 +108,7 @@ const Footer = styled.div`
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+  flex-shrink: 0;
 `;
 
 const Button = styled.button`
@@ -245,7 +251,7 @@ export default function AddInventoryModal({ open, onClose, onSave, studies = [],
         </Header>
         <Body>
           <Field>
-            <Label>Inventory ID</Label>
+            <Label>Inventory ID (Optional)</Label>
             <Input placeholder="e.g., INV-001" value={invCode} onChange={(e)=>setInvCode(e.target.value)} />
           </Field>
 
@@ -265,13 +271,11 @@ export default function AddInventoryModal({ open, onClose, onSave, studies = [],
                 </option>
               ))}
             </Select>
-            <div style={{ fontSize: 12, color: '#64748b' }}>Or enter a new one:</div>
-            <Input placeholder="e.g., COVID Booster" value={study} onChange={(e) => setStudy(e.target.value)} />
             {errors.study && <ErrorText>{errors.study}</ErrorText>}
           </Field>
 
           <Field>
-            <Label>Earliest Expiry Date</Label>
+            <Label>Earliest Expiry Date (Optional)</Label>
             <Input type="date" value={expiresOn} onChange={(e)=>setExpiresOn(e.target.value)} />
           </Field>
 
@@ -287,27 +291,28 @@ export default function AddInventoryModal({ open, onClose, onSave, studies = [],
               <Input type="number" min="0" value={reorderLevel} onChange={(e)=>setReorderLevel(e.target.value)} />
             </Field>
             <Field>
-              <Label>Reorder time in days</Label>
+              <Label>Reorder time (days)</Label>
               <Input type="number" min="0" value={reorderTimeDays} onChange={(e)=>setReorderTimeDays(e.target.value)} />
             </Field>
           </div>
 
-          <Field>
-            <Label>Quantity in reorder</Label>
-            <Input type="number" min="0" value={qtyInReorder} onChange={(e)=>setQtyInReorder(e.target.value)} />
-          </Field>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+            <Field>
+              <Label>Qty in reorder</Label>
+              <Input type="number" min="0" value={qtyInReorder} onChange={(e)=>setQtyInReorder(e.target.value)} />
+            </Field>
+            <Field>
+              <Label>Discontinued?</Label>
+              <div style={{ display:'flex', alignItems:'center', gap:8, height: '38px' }}>
+                <input id="discontinued" type="checkbox" checked={discontinued} onChange={(e)=>setDiscontinued(e.target.checked)} />
+                <label htmlFor="discontinued" style={{ color:'#334155', fontSize: '14px' }}>Yes</label>
+              </div>
+            </Field>
+          </div>
 
           <Field>
-            <Label>Discontinued?</Label>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              <input id="discontinued" type="checkbox" checked={discontinued} onChange={(e)=>setDiscontinued(e.target.checked)} />
-              <label htmlFor="discontinued" style={{ color:'#334155' }}>Mark as discontinued</label>
-            </div>
-          </Field>
-
-          <Field>
-            <Label>Notes</Label>
-            <textarea rows={3} style={{ resize:'vertical', padding:12, borderRadius:10, border:'1px solid #e2e8f0' }} value={notes} onChange={(e)=>setNotes(e.target.value)} />
+            <Label>Notes (Optional)</Label>
+            <textarea rows={2} style={{ resize:'vertical', padding:12, borderRadius:10, border:'1px solid #e2e8f0' }} value={notes} onChange={(e)=>setNotes(e.target.value)} />
           </Field>
         </Body>
         <Footer>

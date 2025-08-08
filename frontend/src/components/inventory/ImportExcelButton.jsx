@@ -1,7 +1,6 @@
 import React, { useRef, useState } from 'react';
 import styled from 'styled-components';
 import { FileUp } from 'lucide-react';
-import { api } from '../../api.js';
 
 const Btn = styled.button`
   display: inline-flex;
