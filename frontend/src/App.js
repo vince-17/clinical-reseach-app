@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import PatientsList from './components/PatientsList.jsx';
+import Topbar from './components/Topbar.jsx';
+import Sidebar from './components/Sidebar.jsx';
+import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import './App.css';
 
-function App() {
+function AppShell() {
   const [health, setHealth] = useState(null);
   const [error, setError] = useState(null);
   const [patients, setPatients] = useState([]);
@@ -191,21 +194,9 @@ function App() {
 
   return (
     <div>
-      <div className="navbar">
-        <div className="brand">Clinical Research</div>
-        <div className="status">{health ? 'Online' : 'Connecting...'}</div>
-      </div>
+      <Topbar online={!!health} />
       <div className="layout">
-        <aside className="sidebar">
-          <div className="group">Navigation</div>
-          <nav className="nav">
-            <a href="#dash" className="active">Dashboard</a>
-            <a href="#patients">Patients</a>
-            <a href="#appointments">Scheduling</a>
-            <a href="#inventory">Inventory</a>
-            <a href="#admin">Admin</a>
-          </nav>
-        </aside>
+        <Sidebar current={tab} onNavigate={setTab} />
         <main className="content">
       <div className="container">
         <h1 id="dash">Clinical Research App</h1>
@@ -468,4 +459,10 @@ function App() {
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
+  );
+}
