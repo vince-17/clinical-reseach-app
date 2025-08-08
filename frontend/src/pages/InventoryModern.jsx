@@ -6,6 +6,7 @@ import InventoryTable from '../components/inventory/InventoryTable.jsx';
 import AddInventoryModal from '../components/inventory/AddInventoryModal.jsx';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import ImportExcelButton from '../components/inventory/ImportExcelButton.jsx';
 
 const Page = styled.div`
   display: grid;
@@ -99,10 +100,13 @@ export default function InventoryModern() {
     <Page>
       <Header>
         <Title>Inventory</Title>
-        <AddInventoryButton onClick={() => setIsModalOpen(true)}>
-          <Plus size={16} />
-          Add Inventory
-        </AddInventoryButton>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <ImportExcelButton token={token} onImported={() => { loadRows(); loadStudies(); }} />
+          <AddInventoryButton onClick={() => setIsModalOpen(true)}>
+            <Plus size={16} />
+            Add Inventory
+          </AddInventoryButton>
+        </div>
       </Header>
 
       {success && (

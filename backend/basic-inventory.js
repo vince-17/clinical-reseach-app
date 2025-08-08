@@ -1,4 +1,6 @@
 const { db } = require('./db');
+const multer = require('multer');
+const XLSX = require('xlsx');
 
 function run(sql, params = []) {
   return new Promise((resolve, reject) => {
@@ -94,6 +96,49 @@ module.exports = function attachBasicInventory(app) {
         ORDER BY study_name ASC
       `);
       res.json(rows);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+  app.post('/api/basic/inventory/import', upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: 'file is required' });
+      await ensureSchema();
+      const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+      const sheetName = wb.SheetNames.find(n => n.toLowerCase() === 'study') || wb.SheetNames[0];
+      if (!sheetName) return res.status(400).json({ error: 'No sheets found' });
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { defval: '' });
+
+      // Clear existing inventory for a full replace
+      await run(`DELETE FROM inventory`);
+      // Optionally, keep items/studies tables and re-use entries; we will upsert by names/ids
+
+      for (const r of rows) {
+        // Try to map common headers; allow flexible column names
+        const itemName = r.Item || r['Item Name'] || r.Name || r.Item_Name || r.item || r.name;
+        const studyName = r.Study || r['Study Name'] || r.study || r.study_name || r.Name || r.name;
+        const quantity = Number(r.Quantity || r['Quantity in stock'] || r['Qty'] || r.qty || r.quantity || 0) || 0;
+        const studyIdFromSheet = r['Study ID'] || r.study_id || r['StudyID'];
+        if (!itemName || !studyName) continue;
+
+        const itemIns = await run(`INSERT INTO items(name, description) VALUES(?, ?)`, [String(itemName).trim(), null]);
+        const sid = (studyIdFromSheet && String(studyIdFromSheet).trim()) || String(studyName).trim().toUpperCase().replace(/\s+/g, '-').slice(0, 48);
+        await run(`INSERT OR IGNORE INTO studies(study_name, study_id) VALUES(?, ?)`, [String(studyName).trim(), sid]);
+        const study = await get(`SELECT id FROM studies WHERE study_id = ?`, [sid]);
+        await run(`INSERT INTO inventory(item_id, study_id, quantity) VALUES(?, ?, ?)`, [itemIns.lastID, study.id, quantity]);
+      }
+
+      const out = await all(`
+        SELECT inv.id, i.name AS item_name, s.study_name, s.study_id, inv.quantity
+        FROM inventory inv
+        JOIN items i ON i.id = inv.item_id
+        JOIN studies s ON s.id = inv.study_id
+        ORDER BY inv.id DESC
+      `);
+      res.json({ ok: true, count: out.length });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
