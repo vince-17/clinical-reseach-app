@@ -31,11 +31,7 @@ export default function InventoryPage({
         <button type="submit" style={{ marginLeft: 8 }} disabled={loading?.addItem}>Add Item</button>
       </form>
 
-      <form onSubmit={addItem} style={{ marginBottom: 12 }}>
-        <input placeholder="Item name" value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} />
-        <input placeholder="Category" value={newItem.category} onChange={(e) => setNewItem({ ...newItem, category: e.target.value })} style={{ marginLeft: 8 }} />
-        <button type="submit" style={{ marginLeft: 8 }}>Add Item</button>
-      </form>
+      
       <div style={{ display: 'flex', gap: 24 }}>
         <div style={{ width: 300, textAlign: 'left' }}>
           <strong>Items</strong>
