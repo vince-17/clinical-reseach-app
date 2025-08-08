@@ -250,13 +250,96 @@ module.exports = function attachBasicInventory(app) {
       await ensureSchema();
       const id = Number(req.params.id);
       if (!Number.isFinite(id)) return res.status(400).json({ error: 'invalid id' });
-      const { quantity } = req.body || {};
-      if (!Number.isFinite(Number(quantity)) || Number(quantity) < 0) {
-        return res.status(400).json({ error: 'quantity must be a non-negative number' });
+      
+      const { 
+        item_name, study_name, inv_code, name, expires_on, 
+        qty_in_stock, quantity, reorder_level, reorder_time_days, 
+        qty_in_reorder, discontinued, notes 
+      } = req.body || {};
+
+      // If this is a comprehensive update (has item_name or study_name), handle it fully
+      if (item_name || study_name) {
+        // Get current inventory item to find item_id and study_id
+        const currentItem = await get(`
+          SELECT inv.*, i.name as current_item_name, s.study_name as current_study_name 
+          FROM inventory inv 
+          JOIN items i ON i.id = inv.item_id 
+          JOIN studies s ON s.id = inv.study_id 
+          WHERE inv.id = ?
+        `, [id]);
+        
+        if (!currentItem) return res.status(404).json({ error: 'not found' });
+
+        let itemId = currentItem.item_id;
+        let studyId = currentItem.study_id;
+
+        // Update item if item_name changed
+        if (item_name && item_name !== currentItem.current_item_name) {
+          await run(`UPDATE items SET name = ? WHERE id = ?`, [item_name, itemId]);
+        }
+
+        // Update study if study_name changed  
+        if (study_name && study_name !== currentItem.current_study_name) {
+          // Check if study already exists
+          const existingStudy = await get(`SELECT id FROM studies WHERE study_name = ?`, [study_name]);
+          if (existingStudy) {
+            studyId = existingStudy.id;
+          } else {
+            // Create new study
+            const sid = String(study_name).trim().toUpperCase().replace(/\s+/g, '-').slice(0, 48);
+            await run(`INSERT INTO studies(study_name, study_id) VALUES(?, ?)`, [study_name, sid]);
+            const newStudy = await get(`SELECT id FROM studies WHERE study_id = ?`, [sid]);
+            studyId = newStudy.id;
+          }
+        }
+
+        // Update inventory record
+        const finalQty = qty_in_stock != null ? Number(qty_in_stock) : (quantity != null ? Number(quantity) : currentItem.qty_in_stock);
+        const result = await run(`
+          UPDATE inventory SET 
+            item_id = ?, study_id = ?, inv_code = ?, name = ?, expires_on = ?,
+            qty_in_stock = ?, quantity = ?, reorder_level = ?, reorder_time_days = ?,
+            qty_in_reorder = ?, discontinued = ?, notes = ?
+          WHERE id = ?
+        `, [
+          itemId, studyId,
+          inv_code != null ? inv_code : currentItem.inv_code,
+          name != null ? name : currentItem.name,
+          expires_on != null ? expires_on : currentItem.expires_on,
+          finalQty, finalQty,
+          reorder_level != null ? Number(reorder_level) : currentItem.reorder_level,
+          reorder_time_days != null ? Number(reorder_time_days) : currentItem.reorder_time_days,
+          qty_in_reorder != null ? Number(qty_in_reorder) : currentItem.qty_in_reorder,
+          discontinued != null ? (discontinued ? 1 : 0) : currentItem.discontinued,
+          notes != null ? notes : currentItem.notes,
+          id
+        ]);
+
+        if (result.changes === 0) return res.status(404).json({ error: 'not found' });
+
+        // Return updated item
+        const updatedItem = await get(`
+          SELECT inv.id, i.name AS item_name, s.study_name, s.study_id, inv.inv_code,
+                 COALESCE(inv.name, i.name) AS name, inv.expires_on, inv.qty_in_stock,
+                 inv.reorder_level, inv.reorder_time_days, inv.qty_in_reorder,
+                 inv.discontinued, inv.notes, inv.quantity
+          FROM inventory inv
+          JOIN items i ON i.id = inv.item_id
+          JOIN studies s ON s.id = inv.study_id
+          WHERE inv.id = ?
+        `, [id]);
+
+        res.json(updatedItem);
+      } else {
+        // Simple quantity-only update (backward compatibility)
+        const finalQty = qty_in_stock != null ? Number(qty_in_stock) : Number(quantity);
+        if (!Number.isFinite(finalQty) || finalQty < 0) {
+          return res.status(400).json({ error: 'quantity must be a non-negative number' });
+        }
+        const result = await run(`UPDATE inventory SET quantity = ?, qty_in_stock = ? WHERE id = ?`, [finalQty, finalQty, id]);
+        if (result.changes === 0) return res.status(404).json({ error: 'not found' });
+        res.json({ ok: true });
       }
-      const result = await run(`UPDATE inventory SET quantity = ? WHERE id = ?`, [Number(quantity), id]);
-      if (result.changes === 0) return res.status(404).json({ error: 'not found' });
-      res.json({ ok: true });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }

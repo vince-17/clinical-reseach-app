@@ -4,6 +4,7 @@ import { Plus, Settings } from 'lucide-react';
 import AddInventoryButton from '../components/inventory/AddInventoryButton.jsx';
 import InventoryTable from '../components/inventory/InventoryTable.jsx';
 import AddInventoryModal from '../components/inventory/AddInventoryModal.jsx';
+import EditInventoryModal from '../components/inventory/EditInventoryModal.jsx';
 import StudyManager from '../components/StudyManager.jsx';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -38,6 +39,8 @@ const Card = styled.div`
 export default function InventoryModern() {
   const { token } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
   const [showStudyManager, setShowStudyManager] = useState(false);
   const [success, setSuccess] = useState('');
   const [rows, setRows] = useState([]);
@@ -95,12 +98,24 @@ export default function InventoryModern() {
   }
 
   async function handleEdit(row) {
-    const v = window.prompt('New quantity in stock', String(row.qty_in_stock ?? row.quantity ?? 0));
-    if (v == null) return;
-    const q = Number(v);
-    if (!Number.isFinite(q) || q < 0) return alert('Quantity must be a non-negative number');
-    await api(`/api/basic/inventory/${row.id}`, { method: 'PATCH', token, body: { quantity: q } });
-    await loadRows();
+    setEditingItem(row);
+    setIsEditModalOpen(true);
+  }
+
+  async function handleSaveEdit(updatedItem) {
+    try {
+      await api(`/api/basic/inventory/${updatedItem.id}`, { 
+        method: 'PATCH', 
+        token, 
+        body: updatedItem 
+      });
+      await Promise.all([loadRows(), loadStudies()]);
+      setSuccess('Inventory item updated');
+      setTimeout(() => setSuccess(''), 1800);
+    } catch (error) {
+      console.error('Edit error:', error);
+      alert('Error updating inventory: ' + (error.message || 'Unknown error'));
+    }
   }
 
   return (
@@ -170,6 +185,17 @@ export default function InventoryModern() {
         }}
         studies={studyOptions}
         defaultStudy={rows[0]?.study_name || ''}
+      />
+
+      <EditInventoryModal
+        open={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingItem(null);
+        }}
+        onSave={handleSaveEdit}
+        studies={studyOptions}
+        item={editingItem}
       />
     </Page>
   );
