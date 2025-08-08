@@ -4,7 +4,7 @@ export default function Sidebar({ current, onNavigate }) {
     ['dashboard', 'Dashboard'],
     ['patients', 'Patients'],
     ['appointments', 'Scheduling'],
-    ['inventory', 'Inventory'],
+    ['inventory-basic', 'Inventory'],
     ['admin', 'Admin'],
   ];
   return (

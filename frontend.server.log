@@ -737,3 +737,107 @@ src/components/PatientCalendar.jsx
   Line 10:10:  'endOfMonth' is defined but never used  no-unused-vars
 
 webpack compiled with 1 warning
+Compiling...
+Compiled with warnings.
+
+[eslint] 
+src/components/PatientCalendar.jsx
+  Line 10:10:  'endOfMonth' is defined but never used  no-unused-vars
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/components/PatientCalendar.jsx
+  Line 10:10:  'endOfMonth' is defined but never used  no-unused-vars
+
+webpack compiled with 1 warning
+Compiling...
+Compiled with warnings.
+
+[eslint] 
+src/components/PatientCalendar.jsx
+  Line 10:10:  'endOfMonth' is defined but never used  no-unused-vars
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/components/PatientCalendar.jsx
+  Line 10:10:  'endOfMonth' is defined but never used  no-unused-vars
+
+webpack compiled with 1 warning
+Compiling...
+Compiled with warnings.
+
+[eslint] 
+src/App.js
+  Line 9:8:    'InventoryPage' is defined but never used          no-unused-vars
+  Line 22:10:  'items' is assigned a value but never used         no-unused-vars
+  Line 24:10:  'lots' is assigned a value but never used          no-unused-vars
+  Line 35:10:  'itemQuery' is assigned a value but never used     no-unused-vars
+  Line 35:21:  'setItemQuery' is assigned a value but never used  no-unused-vars
+  Line 195:9:  'addItem' is assigned a value but never used       no-unused-vars
+  Line 212:9:  'updateItem' is assigned a value but never used    no-unused-vars
+  Line 241:9:  'addLot' is assigned a value but never used        no-unused-vars
+  Line 260:9:  'doDispense' is assigned a value but never used    no-unused-vars
+
+src/components/PatientCalendar.jsx
+  Line 10:10:  'endOfMonth' is defined but never used  no-unused-vars
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/App.js
+  Line 9:8:    'InventoryPage' is defined but never used          no-unused-vars
+  Line 22:10:  'items' is assigned a value but never used         no-unused-vars
+  Line 24:10:  'lots' is assigned a value but never used          no-unused-vars
+  Line 35:10:  'itemQuery' is assigned a value but never used     no-unused-vars
+  Line 35:21:  'setItemQuery' is assigned a value but never used  no-unused-vars
+  Line 195:9:  'addItem' is assigned a value but never used       no-unused-vars
+  Line 212:9:  'updateItem' is assigned a value but never used    no-unused-vars
+  Line 241:9:  'addLot' is assigned a value but never used        no-unused-vars
+  Line 260:9:  'doDispense' is assigned a value but never used    no-unused-vars
+
+src/components/PatientCalendar.jsx
+  Line 10:10:  'endOfMonth' is defined but never used  no-unused-vars
+
+webpack compiled with 1 warning
+Compiling...
+Compiled with warnings.
+
+[eslint] 
+src/App.js
+  Line 9:8:    'InventoryPage' is defined but never used          no-unused-vars
+  Line 22:10:  'items' is assigned a value but never used         no-unused-vars
+  Line 24:10:  'lots' is assigned a value but never used          no-unused-vars
+  Line 35:10:  'itemQuery' is assigned a value but never used     no-unused-vars
+  Line 35:21:  'setItemQuery' is assigned a value but never used  no-unused-vars
+  Line 195:9:  'addItem' is assigned a value but never used       no-unused-vars
+  Line 212:9:  'updateItem' is assigned a value but never used    no-unused-vars
+  Line 241:9:  'addLot' is assigned a value but never used        no-unused-vars
+  Line 260:9:  'doDispense' is assigned a value but never used    no-unused-vars
+
+src/components/PatientCalendar.jsx
+  Line 10:10:  'endOfMonth' is defined but never used  no-unused-vars
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+WARNING in [eslint] 
+src/App.js
+  Line 9:8:    'InventoryPage' is defined but never used          no-unused-vars
+  Line 22:10:  'items' is assigned a value but never used         no-unused-vars
+  Line 24:10:  'lots' is assigned a value but never used          no-unused-vars
+  Line 35:10:  'itemQuery' is assigned a value but never used     no-unused-vars
+  Line 35:21:  'setItemQuery' is assigned a value but never used  no-unused-vars
+  Line 195:9:  'addItem' is assigned a value but never used       no-unused-vars
+  Line 212:9:  'updateItem' is assigned a value but never used    no-unused-vars
+  Line 241:9:  'addLot' is assigned a value but never used        no-unused-vars
+  Line 260:9:  'doDispense' is assigned a value but never used    no-unused-vars
+
+src/components/PatientCalendar.jsx
+  Line 10:10:  'endOfMonth' is defined but never used  no-unused-vars
+
+webpack compiled with 1 warning
