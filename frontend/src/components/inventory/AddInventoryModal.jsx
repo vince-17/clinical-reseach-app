@@ -225,18 +225,16 @@ export default function AddInventoryModal({ open, onClose, onSave, studies = [] 
 
           <Field>
             <Label>Study</Label>
-            {studies.length ? (
-              <Select value={study} onChange={(e) => setStudy(e.target.value)}>
-                <option value="">Select a study</option>
-                {studies.map((s) => (
-                  <option key={s.id ?? s} value={s.name ?? s}>
-                    {s.name ?? s}
-                  </option>
-                ))}
-              </Select>
-            ) : (
-              <Input placeholder="e.g., COVID Booster" value={study} onChange={(e) => setStudy(e.target.value)} />
-            )}
+            <Select value={study} onChange={(e) => setStudy(e.target.value)}>
+              <option value="">Select a study</option>
+              {studies.map((s) => (
+                <option key={s.id ?? s.study_id ?? s} value={s.study_name ?? s}>
+                  {(s.study_name ?? s)}{s.study_id ? ` (${s.study_id})` : ''}
+                </option>
+              ))}
+            </Select>
+            <div style={{ fontSize: 12, color: '#64748b' }}>Or enter a new one:</div>
+            <Input placeholder="e.g., COVID Booster" value={study} onChange={(e) => setStudy(e.target.value)} />
             {errors.study && <ErrorText>{errors.study}</ErrorText>}
           </Field>
 
