@@ -51,11 +51,12 @@ module.exports = function attachBasicInventory(app) {
   app.post('/api/basic/inventory/new', async (req, res) => {
     try {
       const { item_name, item_description, study_name, study_id, quantity } = req.body || {};
-      if (!item_name || !study_name || !study_id) return res.status(400).json({ error: 'item_name, study_name, study_id required' });
+      if (!item_name || !study_name) return res.status(400).json({ error: 'item_name and study_name required' });
       await ensureSchema();
       const item = await run(`INSERT INTO items(name, description) VALUES(?, ?)`, [item_name, item_description || null]);
-      await run(`INSERT OR IGNORE INTO studies(study_name, study_id) VALUES(?, ?)`, [study_name, study_id]);
-      const study = await get(`SELECT id FROM studies WHERE study_id = ?`, [study_id]);
+      const sid = (study_id && String(study_id).trim()) || (String(study_name).trim().toUpperCase().replace(/\s+/g, '-').slice(0, 48)) || `STUDY-${Date.now()}`;
+      await run(`INSERT OR IGNORE INTO studies(study_name, study_id) VALUES(?, ?)`, [study_name, sid]);
+      const study = await get(`SELECT id FROM studies WHERE study_id = ?`, [sid]);
       const inv = await run(`INSERT INTO inventory(item_id, study_id, quantity) VALUES(?, ?, ?)`, [item.lastID, study.id, Number(quantity || 0)]);
       res.json({ ok: true, id: inv.lastID });
     } catch (e) {

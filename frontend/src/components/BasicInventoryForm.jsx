@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { api } from '../api';
 
 export default function BasicInventoryForm({ onAdded }) {
-  const [f, setF] = useState({ item_name: '', item_description: '', study_name: '', study_id: '', quantity: 0 });
+  const [f, setF] = useState({ item_name: '', study_name: '', quantity: 0 });
   const [msg, setMsg] = useState('');
 
   async function onSubmit(e) {
@@ -11,7 +11,7 @@ export default function BasicInventoryForm({ onAdded }) {
     try {
       await api('/api/basic/inventory/new', { method: 'POST', body: f });
       setMsg('Saved');
-      setF({ item_name: '', item_description: '', study_name: '', study_id: '', quantity: 0 });
+      setF({ item_name: '', study_name: '', quantity: 0 });
       onAdded && onAdded();
     } catch (e) {
       setMsg(e.message || 'Failed');
@@ -20,13 +20,22 @@ export default function BasicInventoryForm({ onAdded }) {
 
   return (
     <form onSubmit={onSubmit} style={{ display:'grid', gap:8, maxWidth:420 }}>
-      <input placeholder="Item name" value={f.item_name} onChange={(e)=>setF(s=>({ ...s, item_name: e.target.value }))} />
-      <input placeholder="Item description (optional)" value={f.item_description} onChange={(e)=>setF(s=>({ ...s, item_description: e.target.value }))} />
-      <input placeholder="Study name" value={f.study_name} onChange={(e)=>setF(s=>({ ...s, study_name: e.target.value }))} />
-      <input placeholder="Study ID (e.g., PROT-001)" value={f.study_id} onChange={(e)=>setF(s=>({ ...s, study_id: e.target.value }))} />
-      <input type="number" min="0" placeholder="Quantity" value={f.quantity} onChange={(e)=>setF(s=>({ ...s, quantity: e.target.value }))} />
-      <button type="submit">Add Inventory</button>
-      {msg && <div>{msg}</div>}
+      <div style={{ display:'grid', gap:8 }}>
+        <label className="muted">Item</label>
+        <input className="input-field" placeholder="e.g., Syringe 5ml" value={f.item_name} onChange={(e)=>setF(s=>({ ...s, item_name: e.target.value }))} />
+      </div>
+      <div style={{ display:'grid', gap:8 }}>
+        <label className="muted">Study</label>
+        <input className="input-field" placeholder="e.g., COVID Booster" value={f.study_name} onChange={(e)=>setF(s=>({ ...s, study_name: e.target.value }))} />
+      </div>
+      <div style={{ display:'grid', gap:8 }}>
+        <label className="muted">Quantity</label>
+        <input className="input-field" type="number" min="0" value={f.quantity} onChange={(e)=>setF(s=>({ ...s, quantity: e.target.value }))} />
+      </div>
+      <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+        <button className="btn btn-primary" type="submit">Add</button>
+        {msg && <span className="muted">{msg}</span>}
+      </div>
     </form>
   );
 }

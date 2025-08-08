@@ -8,28 +8,25 @@ export default function BasicInventoryTable({ reloadKey = 0 }) {
   }, [reloadKey]);
 
   return (
-    <table border="1" cellPadding="6">
-      <thead>
-        <tr>
-          <th>Item</th>
-          <th>Description</th>
-          <th>Study</th>
-          <th>Study ID</th>
-          <th>Quantity</th>
-        </tr>
-      </thead>
-      <tbody>
+    <div>
+      <div className="list" style={{ width: '100%' }}>
+        <div className="row-between" style={{ padding: '6px 0', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
+          <span style={{ width: '35%' }}>Item</span>
+          <span style={{ width: '35%' }}>Study</span>
+          <span style={{ width: '15%', textAlign: 'right' }}>Qty</span>
+        </div>
         {rows.map(r => (
-          <tr key={r.id}>
-            <td>{r.item_name}</td>
-            <td>{r.description || ''}</td>
-            <td>{r.study_name}</td>
-            <td>{r.study_id}</td>
-            <td>{r.quantity}</td>
-          </tr>
+          <div key={r.id} className="row-between" style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+            <span style={{ width: '35%' }}>{r.item_name}</span>
+            <span style={{ width: '35%' }}>{r.study_name}</span>
+            <span style={{ width: '15%', textAlign: 'right' }}>{r.quantity}</span>
+          </div>
         ))}
-      </tbody>
-    </table>
+        {rows.length === 0 && (
+          <div className="muted" style={{ padding: '12px 0' }}>No inventory yet.</div>
+        )}
+      </div>
+    </div>
   );
 }
 
