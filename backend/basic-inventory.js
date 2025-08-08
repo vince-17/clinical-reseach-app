@@ -44,22 +44,66 @@ async function ensureSchema() {
     item_id INTEGER NOT NULL,
     study_id INTEGER NOT NULL,
     quantity INTEGER NOT NULL DEFAULT 0,
+    inv_code TEXT,
+    name TEXT,
+    expires_on TEXT,
+    qty_in_stock INTEGER,
+    reorder_level INTEGER,
+    reorder_time_days INTEGER,
+    qty_in_reorder INTEGER,
+    discontinued INTEGER,
+    notes TEXT,
     FOREIGN KEY (item_id) REFERENCES items(id),
     FOREIGN KEY (study_id) REFERENCES studies(id)
   )`);
+  // Backfill columns if table already existed
+  const alterCols = [
+    ['inv_code', 'TEXT'],
+    ['name', 'TEXT'],
+    ['expires_on', 'TEXT'],
+    ['qty_in_stock', 'INTEGER'],
+    ['reorder_level', 'INTEGER'],
+    ['reorder_time_days', 'INTEGER'],
+    ['qty_in_reorder', 'INTEGER'],
+    ['discontinued', 'INTEGER'],
+    ['notes', 'TEXT'],
+  ];
+  for (const [col, type] of alterCols) {
+    try { // best-effort
+      await run(`ALTER TABLE inventory ADD COLUMN ${col} ${type}`);
+    } catch (_) {}
+  }
 }
 
 module.exports = function attachBasicInventory(app) {
   app.post('/api/basic/inventory/new', async (req, res) => {
     try {
-      const { item_name, item_description, study_name, study_id, quantity } = req.body || {};
+      const { item_name, item_description, study_name, study_id, quantity,
+        inv_code, name, expires_on, qty_in_stock, reorder_level, reorder_time_days, qty_in_reorder, discontinued, notes } = req.body || {};
       if (!item_name || !study_name) return res.status(400).json({ error: 'item_name and study_name required' });
       await ensureSchema();
       const item = await run(`INSERT INTO items(name, description) VALUES(?, ?)`, [item_name, item_description || null]);
       const sid = (study_id && String(study_id).trim()) || (String(study_name).trim().toUpperCase().replace(/\s+/g, '-').slice(0, 48)) || `STUDY-${Date.now()}`;
       await run(`INSERT OR IGNORE INTO studies(study_name, study_id) VALUES(?, ?)`, [study_name, sid]);
       const study = await get(`SELECT id FROM studies WHERE study_id = ?`, [sid]);
-      const inv = await run(`INSERT INTO inventory(item_id, study_id, quantity) VALUES(?, ?, ?)`, [item.lastID, study.id, Number(quantity || 0)]);
+      const inv = await run(
+        `INSERT INTO inventory(item_id, study_id, quantity, inv_code, name, expires_on, qty_in_stock, reorder_level, reorder_time_days, qty_in_reorder, discontinued, notes)
+         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          item.lastID,
+          study.id,
+          Number(quantity ?? qty_in_stock ?? 0),
+          inv_code || null,
+          name || item_name || null,
+          expires_on || null,
+          qty_in_stock != null ? Number(qty_in_stock) : Number(quantity || 0),
+          reorder_level != null ? Number(reorder_level) : null,
+          reorder_time_days != null ? Number(reorder_time_days) : null,
+          qty_in_reorder != null ? Number(qty_in_reorder) : null,
+          discontinued ? 1 : 0,
+          notes || null,
+        ]
+      );
       res.json({ ok: true, id: inv.lastID });
     } catch (e) {
       res.status(500).json({ error: e.message });
@@ -75,7 +119,16 @@ module.exports = function attachBasicInventory(app) {
                i.description AS description,
                s.study_name AS study_name,
                s.study_id   AS study_id,
-               inv.quantity
+               inv.quantity,
+               inv.inv_code,
+               COALESCE(inv.name, i.name) AS name,
+               inv.expires_on,
+               inv.qty_in_stock,
+               inv.reorder_level,
+               inv.reorder_time_days,
+               inv.qty_in_reorder,
+               inv.discontinued,
+               inv.notes
         FROM inventory inv
         JOIN items   i ON i.id = inv.item_id
         JOIN studies s ON s.id = inv.study_id
@@ -119,16 +172,30 @@ module.exports = function attachBasicInventory(app) {
       for (const r of rows) {
         // Try to map common headers; allow flexible column names
         const itemName = r.Item || r['Item Name'] || r.Name || r.Item_Name || r.item || r.name;
-        const studyName = r.Study || r['Study Name'] || r.study || r.study_name || r.Name || r.name;
+        const studyName = r.Study || r['Study'] || r['Study Name'] || r.study || r.study_name || r.Name || r.name;
         const quantity = Number(r.Quantity || r['Quantity in stock'] || r['Qty'] || r.qty || r.quantity || 0) || 0;
         const studyIdFromSheet = r['Study ID'] || r.study_id || r['StudyID'];
+        const invCode = r['Inventory ID'] || r['InventoryID'] || r.inv_code || null;
+        const name = r['Name'] || r['Item Name'] || r.name || itemName || null;
+        const expiresOn = r['Earliest Expiry Date'] || r['Expiry'] || r['Expires On'] || r.expires_on || null;
+        const qtyInStock = Number(r['Quantity in stock'] ?? r.qty_in_stock ?? quantity ?? 0) || 0;
+        const reorderLevel = Number(r['Reorder level'] ?? r.reorder_level ?? null);
+        const reorderTimeDays = Number(r['Reorder time in days'] ?? r.reorder_time_days ?? null);
+        const qtyInReorder = Number(r['Quantity in reorder'] ?? r.qty_in_reorder ?? null);
+        const discontinued = (String(r['Discontinued?'] ?? r.discontinued ?? '').toLowerCase().trim());
+        const discontinuedVal = ['yes','y','true','1'].includes(discontinued) ? 1 : 0;
+        const notes = r['Notes'] ?? r.notes ?? null;
         if (!itemName || !studyName) continue;
 
         const itemIns = await run(`INSERT INTO items(name, description) VALUES(?, ?)`, [String(itemName).trim(), null]);
         const sid = (studyIdFromSheet && String(studyIdFromSheet).trim()) || String(studyName).trim().toUpperCase().replace(/\s+/g, '-').slice(0, 48);
         await run(`INSERT OR IGNORE INTO studies(study_name, study_id) VALUES(?, ?)`, [String(studyName).trim(), sid]);
         const study = await get(`SELECT id FROM studies WHERE study_id = ?`, [sid]);
-        await run(`INSERT INTO inventory(item_id, study_id, quantity) VALUES(?, ?, ?)`, [itemIns.lastID, study.id, quantity]);
+        await run(
+          `INSERT INTO inventory(item_id, study_id, quantity, inv_code, name, expires_on, qty_in_stock, reorder_level, reorder_time_days, qty_in_reorder, discontinued, notes)
+           VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [itemIns.lastID, study.id, quantity, invCode, name, expiresOn, qtyInStock, reorderLevel, reorderTimeDays, qtyInReorder, discontinuedVal, notes]
+        );
       }
 
       const out = await all(`

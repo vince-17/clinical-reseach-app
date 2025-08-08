@@ -71,18 +71,30 @@ export default function InventoryTable({ rows = [], loading = false, onEdit, onD
       <Table>
         <thead>
           <tr>
-            <Th style={{ width: '40%' }}>Item Name</Th>
-            <Th style={{ width: '40%' }}>Study</Th>
-            <Th style={{ width: '15%' }}>Quantity</Th>
-            <Th style={{ width: '5%' }}>Actions</Th>
+            <Th style={{ width: '8%' }}>Inventory ID</Th>
+            <Th style={{ width: '20%' }}>Name</Th>
+            <Th style={{ width: '12%' }}>Study</Th>
+            <Th style={{ width: '12%' }}>Earliest Expiry Date</Th>
+            <Th style={{ width: '10%' }}>Quantity in stock</Th>
+            <Th style={{ width: '10%' }}>Reorder level</Th>
+            <Th style={{ width: '12%' }}>Reorder time (days)</Th>
+            <Th style={{ width: '10%' }}>Qty in reorder</Th>
+            <Th style={{ width: '8%' }}>Discontinued?</Th>
+            <Th style={{ width: '8%' }}>Actions</Th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
             <Tr key={r.id}>
-              <Td>{r.item_name}</Td>
+              <Td>{r.inv_code || r.id}</Td>
+              <Td>{r.name || r.item_name}</Td>
               <Td>{r.study_name}</Td>
-              <Td>{r.quantity}</Td>
+              <Td>{r.expires_on || '-'}</Td>
+              <Td>{r.qty_in_stock ?? r.quantity}</Td>
+              <Td>{r.reorder_level ?? '-'}</Td>
+              <Td>{r.reorder_time_days ?? '-'}</Td>
+              <Td>{r.qty_in_reorder ?? '-'}</Td>
+              <Td>{r.discontinued ? 'Yes' : 'No'}</Td>
               <Td>
                 <Actions>
                   <IconBtn aria-label="Edit" onClick={() => onEdit?.(r)}><Pencil size={16} /></IconBtn>

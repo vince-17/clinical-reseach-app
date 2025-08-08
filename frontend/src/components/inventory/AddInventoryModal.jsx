@@ -144,33 +144,54 @@ const Spinner = styled.div`
 `;
 
 export default function AddInventoryModal({ open, onClose, onSave, studies = [], defaultStudy = '' }) {
-  const [itemName, setItemName] = useState('');
+  const [invCode, setInvCode] = useState('');
+  const [name, setName] = useState('');
   const [study, setStudy] = useState(defaultStudy || '');
-  const [quantity, setQuantity] = useState('');
+  const [expiresOn, setExpiresOn] = useState('');
+  const [qtyInStock, setQtyInStock] = useState('');
+  const [reorderLevel, setReorderLevel] = useState('');
+  const [reorderTimeDays, setReorderTimeDays] = useState('');
+  const [qtyInReorder, setQtyInReorder] = useState('');
+  const [discontinued, setDiscontinued] = useState(false);
+  const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const sheetRef = useRef(null);
 
   const validate = useCallback(() => {
     const next = {};
-    if (!itemName.trim()) next.itemName = 'Item name is required';
+    if (!name.trim()) next.name = 'Name is required';
     if (!study.trim()) next.study = 'Study is required';
-    const q = Number(quantity);
-    if (!Number.isFinite(q) || q < 0) next.quantity = 'Quantity must be 0 or more';
+    const q = Number(qtyInStock);
+    if (!Number.isFinite(q) || q < 0) next.qtyInStock = 'Quantity must be 0 or more';
     setErrors(next);
     return Object.keys(next).length === 0;
-  }, [itemName, study, quantity]);
+  }, [name, study, qtyInStock]);
 
   const handleSave = useCallback(async () => {
     if (!validate()) return;
     try {
       setSaving(true);
-      await onSave?.({ item_name: itemName.trim(), study_name: study.trim(), quantity: Number(quantity) });
+      const payload = {
+        inv_code: invCode || undefined,
+        name: name.trim(),
+        item_name: name.trim(),
+        study_name: study.trim(),
+        expires_on: expiresOn || undefined,
+        qty_in_stock: Number(qtyInStock),
+        quantity: Number(qtyInStock),
+        reorder_level: reorderLevel !== '' ? Number(reorderLevel) : undefined,
+        reorder_time_days: reorderTimeDays !== '' ? Number(reorderTimeDays) : undefined,
+        qty_in_reorder: qtyInReorder !== '' ? Number(qtyInReorder) : undefined,
+        discontinued: !!discontinued,
+        notes: notes || undefined,
+      };
+      await onSave?.(payload);
       onClose?.();
     } finally {
       setSaving(false);
     }
-  }, [validate, itemName, study, quantity, onSave, onClose]);
+  }, [validate, invCode, name, study, expiresOn, qtyInStock, reorderLevel, reorderTimeDays, qtyInReorder, discontinued, notes, onSave, onClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -189,9 +210,16 @@ export default function AddInventoryModal({ open, onClose, onSave, studies = [],
 
   useEffect(() => {
     if (!open) {
-      setItemName('');
+      setInvCode('');
+      setName('');
       setStudy('');
-      setQuantity('');
+      setExpiresOn('');
+      setQtyInStock('');
+      setReorderLevel('');
+      setReorderTimeDays('');
+      setQtyInReorder('');
+      setDiscontinued(false);
+      setNotes('');
       setErrors({});
       setSaving(false);
     }
@@ -199,7 +227,7 @@ export default function AddInventoryModal({ open, onClose, onSave, studies = [],
 
   useEffect(() => {
     if (defaultStudy && !study) setStudy(defaultStudy);
-  }, [defaultStudy]);
+  }, [defaultStudy, study]);
 
   
 
@@ -217,14 +245,14 @@ export default function AddInventoryModal({ open, onClose, onSave, studies = [],
         </Header>
         <Body>
           <Field>
-            <Label>Item Name</Label>
-            <Input
-              autoFocus
-              placeholder="e.g., Syringe 5ml"
-              value={itemName}
-              onChange={(e) => setItemName(e.target.value)}
-            />
-            {errors.itemName && <ErrorText>{errors.itemName}</ErrorText>}
+            <Label>Inventory ID</Label>
+            <Input placeholder="e.g., INV-001" value={invCode} onChange={(e)=>setInvCode(e.target.value)} />
+          </Field>
+
+          <Field>
+            <Label>Name</Label>
+            <Input autoFocus placeholder="e.g., Syringe 5ml" value={name} onChange={(e)=>setName(e.target.value)} />
+            {errors.name && <ErrorText>{errors.name}</ErrorText>}
           </Field>
 
           <Field>
@@ -243,9 +271,43 @@ export default function AddInventoryModal({ open, onClose, onSave, studies = [],
           </Field>
 
           <Field>
-            <Label>Quantity</Label>
-            <Input type="number" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
-            {errors.quantity && <ErrorText>{errors.quantity}</ErrorText>}
+            <Label>Earliest Expiry Date</Label>
+            <Input type="date" value={expiresOn} onChange={(e)=>setExpiresOn(e.target.value)} />
+          </Field>
+
+          <Field>
+            <Label>Quantity in stock</Label>
+            <Input type="number" min="0" value={qtyInStock} onChange={(e)=>setQtyInStock(e.target.value)} />
+            {errors.qtyInStock && <ErrorText>{errors.qtyInStock}</ErrorText>}
+          </Field>
+
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+            <Field>
+              <Label>Reorder level</Label>
+              <Input type="number" min="0" value={reorderLevel} onChange={(e)=>setReorderLevel(e.target.value)} />
+            </Field>
+            <Field>
+              <Label>Reorder time in days</Label>
+              <Input type="number" min="0" value={reorderTimeDays} onChange={(e)=>setReorderTimeDays(e.target.value)} />
+            </Field>
+          </div>
+
+          <Field>
+            <Label>Quantity in reorder</Label>
+            <Input type="number" min="0" value={qtyInReorder} onChange={(e)=>setQtyInReorder(e.target.value)} />
+          </Field>
+
+          <Field>
+            <Label>Discontinued?</Label>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <input id="discontinued" type="checkbox" checked={discontinued} onChange={(e)=>setDiscontinued(e.target.checked)} />
+              <label htmlFor="discontinued" style={{ color:'#334155' }}>Mark as discontinued</label>
+            </div>
+          </Field>
+
+          <Field>
+            <Label>Notes</Label>
+            <textarea rows={3} style={{ resize:'vertical', padding:12, borderRadius:10, border:'1px solid #e2e8f0' }} value={notes} onChange={(e)=>setNotes(e.target.value)} />
           </Field>
         </Body>
         <Footer>

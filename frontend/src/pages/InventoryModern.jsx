@@ -88,7 +88,7 @@ export default function InventoryModern() {
   }
 
   async function handleEdit(row) {
-    const v = window.prompt('New quantity', String(row.quantity));
+    const v = window.prompt('New quantity in stock', String(row.qty_in_stock ?? row.quantity ?? 0));
     if (v == null) return;
     const q = Number(v);
     if (!Number.isFinite(q) || q < 0) return alert('Quantity must be a non-negative number');
