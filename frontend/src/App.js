@@ -281,7 +281,7 @@ function AppShell() {
 
   return (
     <div>
-      <Topbar online={!!health} />
+      <Topbar online={!!health} auth={auth} setAuth={setAuth} />
       <div className="layout">
         <Sidebar />
         <main className="content">
