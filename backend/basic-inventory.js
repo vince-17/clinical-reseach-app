@@ -85,6 +85,20 @@ module.exports = function attachBasicInventory(app) {
     }
   });
 
+  app.get('/api/basic/studies', async (_req, res) => {
+    try {
+      await ensureSchema();
+      const rows = await all(`
+        SELECT id, study_name, study_id
+        FROM studies
+        ORDER BY study_name ASC
+      `);
+      res.json(rows);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.delete('/api/basic/inventory/:id', async (req, res) => {
     try {
       await ensureSchema();

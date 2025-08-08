@@ -39,6 +39,7 @@ export default function InventoryModern() {
   const [success, setSuccess] = useState('');
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [studies, setStudies] = useState([]);
 
   const loadRows = React.useCallback(async function loadRows() {
     setLoading(true);
@@ -50,7 +51,14 @@ export default function InventoryModern() {
     }
   }, [token]);
 
-  React.useEffect(() => { loadRows(); }, [loadRows]);
+  const loadStudies = React.useCallback(async function loadStudies() {
+    try {
+      const data = await api('/api/basic/studies', { method: 'GET', token });
+      setStudies(data || []);
+    } catch {}
+  }, [token]);
+
+  React.useEffect(() => { loadRows(); loadStudies(); }, [loadRows, loadStudies]);
 
   async function handleSave(newRow) {
     await api('/api/basic/inventory/new', { method: 'POST', token, body: newRow });
@@ -110,6 +118,7 @@ export default function InventoryModern() {
           await handleSave(payload);
           setIsModalOpen(false);
         }}
+        studies={studies}
       />
     </Page>
   );
