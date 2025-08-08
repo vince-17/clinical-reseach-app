@@ -224,6 +224,27 @@ module.exports = function attachBasicInventory(app) {
     }
   });
 
+  // Delete a study (only if not used by any inventory)
+  app.delete('/api/basic/studies/:id', async (req, res) => {
+    try {
+      await ensureSchema();
+      const id = Number(req.params.id);
+      if (!Number.isFinite(id)) return res.status(400).json({ error: 'invalid id' });
+      
+      // Check if study is used by any inventory
+      const usage = await get(`SELECT COUNT(*) as count FROM inventory WHERE study_id = ?`, [id]);
+      if (usage.count > 0) {
+        return res.status(400).json({ error: 'Cannot delete study - it is being used by inventory items' });
+      }
+      
+      const result = await run(`DELETE FROM studies WHERE id = ?`, [id]);
+      if (result.changes === 0) return res.status(404).json({ error: 'Study not found' });
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.patch('/api/basic/inventory/:id', async (req, res) => {
     try {
       await ensureSchema();

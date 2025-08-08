@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { Plus } from 'lucide-react';
+import { Plus, Settings } from 'lucide-react';
 import AddInventoryButton from '../components/inventory/AddInventoryButton.jsx';
 import InventoryTable from '../components/inventory/InventoryTable.jsx';
 import AddInventoryModal from '../components/inventory/AddInventoryModal.jsx';
+import StudyManager from '../components/StudyManager.jsx';
 import { api } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import ImportExcelButton from '../components/inventory/ImportExcelButton.jsx';
@@ -37,6 +38,7 @@ const Card = styled.div`
 export default function InventoryModern() {
   const { token } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showStudyManager, setShowStudyManager] = useState(false);
   const [success, setSuccess] = useState('');
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +103,25 @@ export default function InventoryModern() {
       <Header>
         <Title>Inventory</Title>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => setShowStudyManager(!showStudyManager)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '10px 14px',
+              borderRadius: 10,
+              border: '1px solid #e2e8f0',
+              background: showStudyManager ? '#f0f4f8' : '#ffffff',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: 14,
+              color: '#64748b'
+            }}
+          >
+            <Settings size={16} />
+            Manage Studies
+          </button>
           <ImportExcelButton token={token} onImported={() => { loadRows(); loadStudies(); }} />
           <AddInventoryButton onClick={() => setIsModalOpen(true)}>
             <Plus size={16} />
@@ -121,6 +142,13 @@ export default function InventoryModern() {
         }}>
           {success}
         </div>
+      )}
+
+      {/* Study Manager */}
+      {showStudyManager && (
+        <Card>
+          <StudyManager onStudyDeleted={() => { loadRows(); loadStudies(); }} />
+        </Card>
       )}
 
       {/* Table */}
