@@ -12,6 +12,7 @@ export default function PatientsPage({
   updatePatient,
   deletePatient,
   onDeleteConfirm,
+  loading,
 }) {
   const [editing, setEditing] = React.useState(null);
   const [editValues, setEditValues] = React.useState({ firstName: '', lastName: '' });
@@ -32,7 +33,7 @@ export default function PatientsPage({
         <input placeholder="Last name" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} style={{ marginLeft: 8 }} />
         <input placeholder="DOB (YYYY-MM-DD)" value={form.dob} onChange={(e) => setForm({ ...form, dob: e.target.value })} style={{ marginLeft: 8 }} />
         <input type="date" placeholder="Baseline date" value={form.baselineDate} onChange={(e) => setForm({ ...form, baselineDate: e.target.value })} style={{ marginLeft: 8 }} />
-        <button type="submit" style={{ marginLeft: 8 }}>Add</button>
+        <button type="submit" style={{ marginLeft: 8 }} disabled={loading?.addPatient}>Add</button>
       </form>
       <PatientsList
         patients={patients}

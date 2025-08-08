@@ -483,3 +483,54 @@ src/App.js
 Search for the keywords to learn more about each error.
 
 webpack compiled with 1 error
+Compiling...
+Failed to compile.
+
+[eslint] 
+src/App.js
+  Line 293:293:  Unexpected use of 'confirm'  no-restricted-globals
+  Line 294:329:  Unexpected use of 'confirm'  no-restricted-globals
+
+Search for the keywords to learn more about each error.
+ERROR in [eslint] 
+src/App.js
+  Line 293:293:  Unexpected use of 'confirm'  no-restricted-globals
+  Line 294:329:  Unexpected use of 'confirm'  no-restricted-globals
+
+Search for the keywords to learn more about each error.
+
+webpack compiled with 1 error
+Compiling...
+Failed to compile.
+
+[eslint] 
+src/App.js
+  Line 293:293:  Unexpected use of 'confirm'  no-restricted-globals
+  Line 294:329:  Unexpected use of 'confirm'  no-restricted-globals
+
+Search for the keywords to learn more about each error.
+ERROR in [eslint] 
+src/App.js
+  Line 293:293:  Unexpected use of 'confirm'  no-restricted-globals
+  Line 294:329:  Unexpected use of 'confirm'  no-restricted-globals
+
+Search for the keywords to learn more about each error.
+
+webpack compiled with 1 error
+Compiling...
+Failed to compile.
+
+[eslint] 
+src/App.js
+  Line 293:293:  Unexpected use of 'confirm'  no-restricted-globals
+  Line 294:329:  Unexpected use of 'confirm'  no-restricted-globals
+
+Search for the keywords to learn more about each error.
+ERROR in [eslint] 
+src/App.js
+  Line 293:293:  Unexpected use of 'confirm'  no-restricted-globals
+  Line 294:329:  Unexpected use of 'confirm'  no-restricted-globals
+
+Search for the keywords to learn more about each error.
+
+webpack compiled with 1 error
