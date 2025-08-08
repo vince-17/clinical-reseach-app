@@ -1,8 +1,11 @@
+import React from 'react';
+
 export default function InventoryPage({
   items,
   newItem,
   setNewItem,
   addItem,
+  updateItem,
   lots,
   newLot,
   setNewLot,
@@ -12,7 +15,12 @@ export default function InventoryPage({
   setDispense,
   doDispense,
   patients,
+  loading,
 }) {
+  const [editingItem, setEditingItem] = React.useState(null);
+  const [editItemValues, setEditItemValues] = React.useState({ name:'', category:'' });
+  const openEdit = (it) => { setEditingItem(it); setEditItemValues({ name: it.name, category: it.category || '' }); };
+  const saveItem = async () => { await updateItem(editingItem.id, { name: editItemValues.name, category: editItemValues.category || null }); setEditingItem(null); };
   return (
     <>
       <h2>Inventory</h2>
@@ -30,6 +38,7 @@ export default function InventoryPage({
               <li key={it.id}>
                 <button onClick={() => loadLots(it.id)} style={{ marginRight: 8 }}>View Lots</button>
                 {it.name} {it.category ? `(${it.category})` : ''}
+                <button onClick={() => openEdit(it)} style={{ marginLeft: 8 }}>Edit</button>
               </li>
             ))}
           </ul>
@@ -85,6 +94,22 @@ export default function InventoryPage({
       <div style={{ marginTop: 16 }}>
         <a className="btn btn-primary" href="/api/inventory/report.csv" target="_blank" rel="noreferrer">Download Inventory CSV</a>
       </div>
+
+      {editingItem && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}>
+          <div className="card" style={{ width: 420 }}>
+            <h3>Edit item</h3>
+            <div className="grid" style={{ gap: 12 }}>
+              <input placeholder="Name" value={editItemValues.name} onChange={(e)=>setEditItemValues(v=>({ ...v, name: e.target.value }))} />
+              <input placeholder="Category" value={editItemValues.category} onChange={(e)=>setEditItemValues(v=>({ ...v, category: e.target.value }))} />
+            </div>
+            <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:12 }}>
+              <button className="btn" onClick={()=>setEditingItem(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={saveItem}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

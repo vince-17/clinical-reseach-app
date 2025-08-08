@@ -9,6 +9,7 @@ import AppointmentsPage from './pages/Appointments.jsx';
 import InventoryPage from './pages/Inventory.jsx';
 import AdminPage from './pages/Admin.jsx';
 import './App.css';
+import { Toast } from './components/Toast.jsx';
 
 function AppShell() {
   const [health, setHealth] = useState(null);
@@ -31,6 +32,16 @@ function AppShell() {
   const [patientQuery, setPatientQuery] = useState('');
   const [apptQuery, setApptQuery] = useState('');
   const [itemQuery, setItemQuery] = useState('');
+  const [toast, setToast] = useState({ message: '', type: 'info' });
+  const [loading, setLoading] = useState({
+    addPatient: false,
+    updatePatient: false,
+    addAppointment: false,
+    updateAppointment: false,
+    addItem: false,
+    addLot: false,
+    dispense: false,
+  });
 
   // Load token from localStorage
   useEffect(() => {
@@ -78,6 +89,7 @@ function AppShell() {
   const addPatient = async (e) => {
     e.preventDefault();
     setError(null);
+    setLoading((p)=>({ ...p, addPatient: true }));
     try {
       const res = await fetch('/api/patients', {
         method: 'POST',
@@ -88,23 +100,35 @@ function AppShell() {
       const created = await res.json();
       setPatients((prev) => [created, ...prev]);
       setForm({ firstName: '', lastName: '', dob: '', baselineDate: '' });
+      setToast({ message: 'Patient added', type: 'success' });
     } catch (e) {
       setError(e.message);
+      setToast({ message: e.message, type: 'error' });
+    } finally {
+      setLoading((p)=>({ ...p, addPatient: false }));
     }
   };
 
   const updatePatient = async (id, partial) => {
-    const res = await fetch(`/api/patients/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: auth.token ? `Bearer ${auth.token}` : '' },
-      body: JSON.stringify(partial),
-    });
-    if (res.ok) {
-      const updated = await res.json();
-      setPatients((prev) => prev.map((p) => (p.id === id ? updated : p)));
-    } else {
-      const err = await res.json().catch(() => ({}));
-      setError(err.error || 'Update failed');
+    setLoading((p)=>({ ...p, updatePatient: true }));
+    try {
+      const res = await fetch(`/api/patients/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: auth.token ? `Bearer ${auth.token}` : '' },
+        body: JSON.stringify(partial),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setPatients((prev) => prev.map((p) => (p.id === id ? updated : p)));
+        setToast({ message: 'Patient updated', type: 'success' });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        const msg = err.error || 'Update failed';
+        setError(msg);
+        setToast({ message: msg, type: 'error' });
+      }
+    } finally {
+      setLoading((p)=>({ ...p, updatePatient: false }));
     }
   };
 
@@ -115,6 +139,7 @@ function AppShell() {
 
   const addAppointment = async (e) => {
     e.preventDefault();
+    setLoading((p)=>({ ...p, addAppointment: true }));
     try {
       const body = { ...apptForm, patientId: Number(apptForm.patientId), durationMinutes: Number(apptForm.durationMinutes), resourceId: apptForm.resourceId ? Number(apptForm.resourceId) : undefined, visitTypeId: apptForm.visitTypeId ? Number(apptForm.visitTypeId) : undefined };
       const res = await fetch('/api/appointments', {
@@ -129,8 +154,35 @@ function AppShell() {
       const created = await res.json();
       setAppointments((prev) => [created, ...prev]);
       setApptForm({ patientId: '', title: '', startAt: '', durationMinutes: 30, resource: '', resourceId: '', visitTypeId: '' });
+      setToast({ message: 'Appointment scheduled', type: 'success' });
     } catch (e) {
       setError(e.message);
+      setToast({ message: e.message, type: 'error' });
+    } finally {
+      setLoading((p)=>({ ...p, addAppointment: false }));
+    }
+  };
+
+  const updateAppointment = async (id, partial) => {
+    setLoading((p)=>({ ...p, updateAppointment: true }));
+    try {
+      const res = await fetch(`/api/appointments/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: auth.token ? `Bearer ${auth.token}` : '' },
+        body: JSON.stringify(partial),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(()=>({}));
+        throw new Error(err.error || 'Update failed');
+      }
+      const updated = await res.json();
+      setAppointments((prev)=> prev.map((a)=> a.id === id ? updated : a));
+      setToast({ message: 'Appointment updated', type: 'success' });
+    } catch (e) {
+      setError(e.message);
+      setToast({ message: e.message, type: 'error' });
+    } finally {
+      setLoading((p)=>({ ...p, updateAppointment: false }));
     }
   };
 
@@ -141,6 +193,7 @@ function AppShell() {
 
   const addItem = async (e) => {
     e.preventDefault();
+    setLoading((p)=>({ ...p, addItem: true }));
     const res = await fetch('/api/inventory/items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: auth.token ? `Bearer ${auth.token}` : '' },
@@ -150,6 +203,28 @@ function AppShell() {
       const created = await res.json();
       setItems((prev) => [created, ...prev]);
       setNewItem({ name: '', category: '' });
+      setToast({ message: 'Item added', type: 'success' });
+    }
+    setLoading((p)=>({ ...p, addItem: false }));
+  };
+
+  const updateItem = async (id, partial) => {
+    try {
+      const res = await fetch(`/api/inventory/items/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: auth.token ? `Bearer ${auth.token}` : '' },
+        body: JSON.stringify(partial),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(()=>({}));
+        throw new Error(err.error || 'Update failed');
+      }
+      const updated = await res.json();
+      setItems((prev)=> prev.map((it)=> it.id === id ? updated : it));
+      setToast({ message: 'Item updated', type: 'success' });
+    } catch (e) {
+      setError(e.message);
+      setToast({ message: e.message, type: 'error' });
     }
   };
 
@@ -164,6 +239,7 @@ function AppShell() {
 
   const addLot = async (e) => {
     e.preventDefault();
+    setLoading((p)=>({ ...p, addLot: true }));
     const { itemId, lotCode, quantity, expiresOn } = newLot;
     if (!itemId) return;
     const res = await fetch(`/api/inventory/items/${itemId}/lots`, {
@@ -175,11 +251,14 @@ function AppShell() {
       const created = await res.json();
       setLots((prev) => [created, ...prev]);
       setNewLot({ itemId, lotCode: '', quantity: 1, expiresOn: '' });
+      setToast({ message: 'Lot added', type: 'success' });
     }
+    setLoading((p)=>({ ...p, addLot: false }));
   };
 
   const doDispense = async (e) => {
     e.preventDefault();
+    setLoading((p)=>({ ...p, dispense: true }));
     const body = { ...dispense, patientId: Number(dispense.patientId), itemId: Number(dispense.itemId), lotId: Number(dispense.lotId), quantity: Number(dispense.quantity) };
     const res = await fetch('/api/inventory/dispense', {
       method: 'POST',
@@ -189,12 +268,15 @@ function AppShell() {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       setError(err.error || 'Dispense failed');
+      setToast({ message: err.error || 'Dispense failed', type: 'error' });
     } else {
       setError(null);
       setDispense({ patientId: '', itemId: '', lotId: '', quantity: 1 });
       // refresh lots for selected item
       if (body.itemId) loadLots(body.itemId);
+      setToast({ message: 'Dispensed', type: 'success' });
     }
+    setLoading((p)=>({ ...p, dispense: false }));
   };
 
   return (
@@ -209,13 +291,14 @@ function AppShell() {
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<Dashboard dashboard={dashboard} />} />
               <Route path="/patients" element={<PatientsPage patients={patients} patientQuery={patientQuery} setPatientQuery={setPatientQuery} form={form} setForm={setForm} addPatient={addPatient} updatePatient={updatePatient} deletePatient={deletePatient} />} />
-              <Route path="/appointments" element={<AppointmentsPage patients={patients} appointments={appointments} visitTypes={visitTypes} resources={resources} apptForm={apptForm} setApptForm={setApptForm} apptQuery={apptQuery} setApptQuery={setApptQuery} addAppointment={addAppointment} deleteAppointment={deleteAppointment} />} />
-              <Route path="/inventory" element={<InventoryPage items={items} newItem={newItem} setNewItem={setNewItem} addItem={addItem} lots={lots} newLot={newLot} setNewLot={setNewLot} loadLots={loadLots} addLot={addLot} dispense={dispense} setDispense={setDispense} doDispense={doDispense} patients={patients} />} />
+              <Route path="/appointments" element={<AppointmentsPage patients={patients} appointments={appointments} visitTypes={visitTypes} resources={resources} apptForm={apptForm} setApptForm={setApptForm} apptQuery={apptQuery} setApptQuery={setApptQuery} addAppointment={addAppointment} deleteAppointment={async (id)=>{ if (confirm('Delete appointment?')) { await deleteAppointment(id); setToast({ message: 'Appointment deleted', type: 'success' }); } }} updateAppointment={updateAppointment} loading={loading} />} />
+              <Route path="/inventory" element={<InventoryPage items={items} newItem={newItem} setNewItem={setNewItem} addItem={addItem} updateItem={updateItem} lots={lots} newLot={newLot} setNewLot={setNewLot} loadLots={loadLots} addLot={addLot} dispense={dispense} setDispense={setDispense} doDispense={doDispense} patients={patients} loading={loading} />} />
               <Route path="/admin" element={<AdminPage auth={auth} setAuth={setAuth} newVisitType={newVisitType} setNewVisitType={setNewVisitType} visitTypes={visitTypes} newResource={newResource} setNewResource={setNewResource} resources={resources} onAddVisitType={async (e) => { e.preventDefault(); const res = await fetch('/api/visit-types', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newVisitType) }); if (res.ok) { const vt = await res.json(); setVisitTypes((p) => [vt, ...p]); setNewVisitType({ name: '', offsetDays: 0, windowMinusDays: 0, windowPlusDays: 0, defaultDurationMinutes: 30 }); } }} onAddResource={async (e) => { e.preventDefault(); const res = await fetch('/api/resources', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newResource) }); if (res.ok) { const r = await res.json(); setResources((p) => [r, ...p]); setNewResource({ name: '', category: '' }); } }} />} />
             </Routes>
           </div>
         </main>
       </div>
+      <Toast message={toast.message} type={toast.type} onDone={() => setToast({ message: '', type: 'info' })} />
     </div>
   );
 }
