@@ -77,10 +77,15 @@ export default function InventoryModern() {
   React.useEffect(() => { loadRows(); loadStudies(); }, [loadRows, loadStudies]);
 
   async function handleSave(newRow) {
-    await api('/api/basic/inventory/new', { method: 'POST', token, body: newRow });
-    await Promise.all([loadRows(), loadStudies()]);
-    setSuccess('Inventory added');
-    setTimeout(() => setSuccess(''), 1800);
+    try {
+      await api('/api/basic/inventory/new', { method: 'POST', token, body: newRow });
+      await Promise.all([loadRows(), loadStudies()]);
+      setSuccess('Inventory added');
+      setTimeout(() => setSuccess(''), 1800);
+    } catch (error) {
+      console.error('Save error:', error);
+      alert('Error saving inventory: ' + (error.message || 'Unknown error'));
+    }
   }
 
   async function handleDelete(row) {

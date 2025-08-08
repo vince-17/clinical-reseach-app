@@ -166,9 +166,9 @@ export default function AddInventoryModal({ open, onClose, onSave, studies = [],
 
   const validate = useCallback(() => {
     const next = {};
-    if (!name.trim()) next.name = 'Name is required';
-    if (!study.trim()) next.study = 'Study is required';
-    const q = Number(qtyInStock);
+    if (!name || !String(name).trim()) next.name = 'Name is required';
+    if (!study || !String(study).trim()) next.study = 'Study is required';
+    const q = Number(qtyInStock || 0);
     if (!Number.isFinite(q) || q < 0) next.qtyInStock = 'Quantity must be 0 or more';
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -180,17 +180,17 @@ export default function AddInventoryModal({ open, onClose, onSave, studies = [],
       setSaving(true);
       const payload = {
         inv_code: invCode || undefined,
-        name: name.trim(),
-        item_name: name.trim(),
-        study_name: study.trim(),
+        name: String(name || '').trim(),
+        item_name: String(name || '').trim(),
+        study_name: String(study || '').trim(),
         expires_on: expiresOn || undefined,
-        qty_in_stock: Number(qtyInStock),
-        quantity: Number(qtyInStock),
-        reorder_level: reorderLevel !== '' ? Number(reorderLevel) : undefined,
-        reorder_time_days: reorderTimeDays !== '' ? Number(reorderTimeDays) : undefined,
-        qty_in_reorder: qtyInReorder !== '' ? Number(qtyInReorder) : undefined,
+        qty_in_stock: Number(qtyInStock || 0),
+        quantity: Number(qtyInStock || 0),
+        reorder_level: reorderLevel && reorderLevel !== '' ? Number(reorderLevel) : undefined,
+        reorder_time_days: reorderTimeDays && reorderTimeDays !== '' ? Number(reorderTimeDays) : undefined,
+        qty_in_reorder: qtyInReorder && qtyInReorder !== '' ? Number(qtyInReorder) : undefined,
         discontinued: !!discontinued,
-        notes: notes || undefined,
+        notes: notes && String(notes).trim() || undefined,
       };
       await onSave?.(payload);
       onClose?.();
@@ -265,11 +265,19 @@ export default function AddInventoryModal({ open, onClose, onSave, studies = [],
             <Label>Study</Label>
             <Select value={study} onChange={(e) => setStudy(e.target.value)}>
               <option value="">Select a study</option>
-              {studies.map((s) => (
-                <option key={s.id ?? s.study_id ?? s} value={s.study_name ?? s}>
-                  {(s.study_name ?? s)}{s.study_id ? ` (${s.study_id})` : ''}
-                </option>
-              ))}
+              {Array.isArray(studies) && studies.length > 0 && studies.map((s) => {
+                // Ensure we have valid data
+                if (!s) return null;
+                const studyName = s.study_name || s.name || String(s);
+                const studyId = s.study_id || '';
+                const key = s.id || s.study_id || studyName || Math.random();
+                
+                return (
+                  <option key={key} value={studyName}>
+                    {studyName}{studyId ? ` (${studyId})` : ''}
+                  </option>
+                );
+              }).filter(Boolean)}
             </Select>
             {errors.study && <ErrorText>{errors.study}</ErrorText>}
           </Field>
