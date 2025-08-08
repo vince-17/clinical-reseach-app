@@ -1,6 +1,4 @@
 export default function InventoryPage({
-  auth,
-  setAuth,
   items,
   newItem,
   setNewItem,
@@ -18,16 +16,6 @@ export default function InventoryPage({
   return (
     <>
       <h2>Inventory</h2>
-      <div style={{ marginBottom: 12 }}>
-        <strong>Auth</strong>
-        <form onSubmit={async (e) => { e.preventDefault(); const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: auth.email, password: auth.password }) }); if (res.ok) { const data = await res.json(); setAuth((p) => ({ ...p, token: data.token })); localStorage.setItem('auth_token', data.token); } }}>
-          <input placeholder="email" value={auth.email} onChange={(e) => setAuth({ ...auth, email: e.target.value })} />
-          <input placeholder="password" type="password" value={auth.password} onChange={(e) => setAuth({ ...auth, password: e.target.value })} style={{ marginLeft: 8 }} />
-          <button type="submit" style={{ marginLeft: 8 }}>Login</button>
-          {auth.token && <span style={{ marginLeft: 8, color: 'lightgreen' }}>Logged in</span>}
-        </form>
-        {auth.token && <button onClick={() => { setAuth({ email: '', password: '', token: '' }); localStorage.removeItem('auth_token'); }} style={{ marginTop: 8 }}>Logout</button>}
-      </div>
 
       <form onSubmit={addItem} style={{ marginBottom: 12 }}>
         <input placeholder="Item name" value={newItem.name} onChange={(e) => setNewItem({ ...newItem, name: e.target.value })} />
@@ -93,6 +81,10 @@ export default function InventoryPage({
         <input type="number" min="1" value={dispense.quantity} onChange={(e) => setDispense({ ...dispense, quantity: e.target.value })} style={{ marginLeft: 8, width: 80 }} />
         <button type="submit" style={{ marginLeft: 8 }}>Dispense</button>
       </form>
+
+      <div style={{ marginTop: 16 }}>
+        <a className="btn btn-primary" href="/api/inventory/report.csv" target="_blank" rel="noreferrer">Download Inventory CSV</a>
+      </div>
     </>
   );
 }

@@ -1,4 +1,6 @@
+import React from 'react';
 import PatientsList from '../components/PatientsList.jsx';
+import Modal from '../components/Modal.jsx';
 
 export default function PatientsPage({
   patients,
@@ -10,6 +12,17 @@ export default function PatientsPage({
   updatePatient,
   deletePatient,
 }) {
+  const [editing, setEditing] = React.useState(null);
+  const [editValues, setEditValues] = React.useState({ firstName: '', lastName: '' });
+
+  const openEdit = (p) => {
+    setEditing(p);
+    setEditValues({ firstName: p.first_name, lastName: p.last_name });
+  };
+  const saveEdit = async () => {
+    await updatePatient(editing.id, { firstName: editValues.firstName, lastName: editValues.lastName });
+    setEditing(null);
+  };
   return (
     <>
       <h2>Patients</h2>
@@ -24,13 +37,19 @@ export default function PatientsPage({
         patients={patients}
         query={patientQuery}
         onQueryChange={setPatientQuery}
-        onEdit={(p) => {
-          const firstName = window.prompt('First name', p.first_name) ?? p.first_name;
-          const lastName = window.prompt('Last name', p.last_name) ?? p.last_name;
-          updatePatient(p.id, { firstName, lastName });
-        }}
+        onEdit={openEdit}
         onDelete={deletePatient}
       />
+
+      <Modal open={!!editing} title="Edit patient" onClose={() => setEditing(null)} footer={[
+        <button key="cancel" className="btn" onClick={() => setEditing(null)}>Cancel</button>,
+        <button key="save" className="btn btn-primary" onClick={saveEdit}>Save</button>,
+      ]}>
+        <div className="grid" style={{ gap: 12 }}>
+          <input placeholder="First name" value={editValues.firstName} onChange={(e)=>setEditValues(v=>({ ...v, firstName: e.target.value }))} />
+          <input placeholder="Last name" value={editValues.lastName} onChange={(e)=>setEditValues(v=>({ ...v, lastName: e.target.value }))} />
+        </div>
+      </Modal>
     </>
   );
 }
