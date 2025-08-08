@@ -195,8 +195,20 @@ function App() {
         <div className="brand">Clinical Research</div>
         <div className="status">{health ? 'Online' : 'Connecting...'}</div>
       </div>
+      <div className="layout">
+        <aside className="sidebar">
+          <div className="group">Navigation</div>
+          <nav className="nav">
+            <a href="#dash" className="active">Dashboard</a>
+            <a href="#patients">Patients</a>
+            <a href="#appointments">Scheduling</a>
+            <a href="#inventory">Inventory</a>
+            <a href="#admin">Admin</a>
+          </nav>
+        </aside>
+        <main className="content">
       <div className="container">
-        <h1>Clinical Research App</h1>
+        <h1 id="dash">Clinical Research App</h1>
         <p>Frontend connected to backend.</p>
         {dashboard && (
           <div style={{ display: 'flex', gap: 16 }}>
@@ -211,7 +223,7 @@ function App() {
         )}
         {error && <p style={{ color: 'salmon' }}>Error: {error}</p>}
 
-        <h2>Patients</h2>
+        <h2 id="patients">Patients</h2>
         <form onSubmit={addPatient} style={{ marginBottom: 16 }}>
           <input
             placeholder="First name"
@@ -253,7 +265,7 @@ function App() {
           onDelete={deletePatient}
         />
 
-        <h2>Appointments</h2>
+        <h2 id="appointments">Appointments</h2>
         <div style={{ margin: '8px 0' }}>
           <input placeholder="Search appointments" value={apptQuery} onChange={(e)=>setApptQuery(e.target.value)} />
         </div>
@@ -322,7 +334,7 @@ function App() {
           ))}
         </ul>
 
-        <h3>Visit Types</h3>
+        <h3 id="admin">Visit Types</h3>
         <form onSubmit={async (e) => {
           e.preventDefault();
           const res = await fetch('/api/visit-types', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newVisitType) });
@@ -373,7 +385,7 @@ function App() {
           <button onClick={async () => { const res = await fetch('/api/audit-logs'); if (res.ok) { const data = await res.json(); alert(JSON.stringify(data.slice(0, 10), null, 2)); } }} style={{ marginLeft: 8 }}>Preview</button>
         </div>
 
-        <h2>Inventory</h2>
+        <h2 id="inventory">Inventory</h2>
         <div style={{ marginBottom: 12 }}>
           <strong>Auth</strong>
           <form onSubmit={async (e) => { e.preventDefault(); const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: auth.email, password: auth.password }) }); if (res.ok) { const data = await res.json(); setAuth((p) => ({ ...p, token: data.token })); localStorage.setItem('auth_token', data.token); } }}>
@@ -449,6 +461,8 @@ function App() {
           <input type="number" min="1" value={dispense.quantity} onChange={(e) => setDispense({ ...dispense, quantity: e.target.value })} style={{ marginLeft: 8, width: 80 }} />
           <button type="submit" style={{ marginLeft: 8 }}>Dispense</button>
         </form>
+      </div>
+        </main>
       </div>
     </div>
   );

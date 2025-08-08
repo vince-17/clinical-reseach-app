@@ -147,3 +147,35 @@ body {
 
 .kpis { display: flex; gap: 12px; flex-wrap: wrap; }
 .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+
+/* Sidebar layout inspired by modern admin dashboards */
+.layout { display: flex; min-height: calc(100vh - 56px); }
+.sidebar {
+  width: 240px;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  padding: 16px 12px;
+}
+.sidebar .group { margin-top: 12px; font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: .06em; padding: 8px 12px; }
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.nav a {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--text);
+  text-decoration: none;
+}
+.nav a.active { background: #eef2ff; color: var(--primary); border: 1px solid #dbeafe; }
+
+.content { flex: 1; }
+
+.kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.status-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+
+.badge { background: #e2e8f0; color: #0f172a; border-radius: 9999px; padding: 2px 8px; font-size: 12px; }
+.progress { height: 6px; background: #eef2ff; border-radius: 6px; overflow: hidden; }
+.progress > span { display: block; height: 100%; background: var(--primary); }
