@@ -1,5 +1,6 @@
 import React from 'react';
 import Modal from '../components/Modal.jsx';
+import PatientCalendar from '../components/PatientCalendar.jsx';
 
 export default function AppointmentsPage({
   patients,
@@ -35,6 +36,28 @@ export default function AppointmentsPage({
   return (
     <>
       <h2>Appointments</h2>
+      <div className="card" style={{ marginBottom: 16 }}>
+        <PatientCalendar
+          appointments={appointments}
+          visitTypes={visitTypes}
+          patients={patients}
+          resources={resources}
+          onCreate={async (payload) => {
+            const e = { preventDefault: () => {} };
+            // bridge to existing addAppointment handler
+            setApptForm({
+              patientId: String(payload.patientId || ''),
+              title: payload.title,
+              startAt: payload.startAt,
+              durationMinutes: payload.durationMinutes,
+              resource: '',
+              resourceId: payload.resourceId ? String(payload.resourceId) : '',
+              visitTypeId: payload.visitTypeId ? String(payload.visitTypeId) : '',
+            });
+            await addAppointment(e);
+          }}
+        />
+      </div>
       <div style={{ margin: '8px 0' }}>
         <input placeholder="Search appointments" value={apptQuery} onChange={(e)=>setApptQuery(e.target.value)} />
       </div>
